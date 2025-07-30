@@ -11,6 +11,8 @@ public class LoginService {
                isValidPassword(password) &&
                isValidDOB(dob);
     }
+    //first change to test automation
+    //first change to test automation
     public boolean isValidUsername(String username) {
         return username != null && username.length() >= 3;
     }
