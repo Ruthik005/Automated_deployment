@@ -45,15 +45,17 @@ pipeline {
         }
 
         stage('Expose via ngrok') {
-            steps {
-                sh """
-                ngrok config add-authtoken ${NGROK_AUTH_TOKEN}
-                nohup ngrok http 8080 > /dev/null 2>&1 &
-                sleep 5
-                echo "Public URL:"
-                curl -s http://localhost:4040/api/tunnels | grep -o 'https://[a-zA-Z0-9.-]*ngrok-free.app'
-                """
-            }
+            environment {
+        NGROK_AUTH_TOKEN = credentials('ngrok-auth') // Replace with your Jenkins credential ID
+    }
+    steps {
+        bat """
+        ngrok config add-authtoken %NGROK_AUTH_TOKEN%
+        start /B ngrok http 8080
+        ping -n 6 127.0.0.1 > nul
+        curl http://localhost:4040/api/tunnels
+        """
+    }
         }
     }
 
