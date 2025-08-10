@@ -1,108 +1,65 @@
 pipeline {
     agent any
-    
-    // Define tools
-    tools {
-        // Use the names of your configured tools in Jenkins
-        maven 'Maven' // Make sure this matches the name in Jenkins Global Tool Configuration
-        jdk 'JDK' // Make sure this matches the name in Jenkins Global Tool Configuration
+
+    environment {
+        DOCKER_IMAGE = "login-ci-demo"
+        NGROK_AUTH_TOKEN = credentials('ngrok-auth') // Jenkins credential ID
     }
-    
+
     stages {
         stage('Checkout') {
             steps {
-                // Checkout code from your repository
-                checkout scm
-                echo 'Code checkout complete'
+                git branch: 'main', url: 'https://github.com/Ruthik005/Automated_deployment.git'
             }
         }
-        
-        stage('Build') {
+
+        stage('Run Unit Tests') {
             steps {
-                // Run Maven clean compile
-                sh 'mvn clean compile'
-                echo 'Build complete'
+                sh 'mvn clean test'
             }
         }
-        
-        stage('Test') {
+
+        stage('Build Docker Image') {
             steps {
-                // Run the tests
-                sh 'mvn test'
-                echo 'Tests complete'
-            }
-            post {
-                always {
-                    // Archive JUnit test results
-                    junit '**/target/surefire-reports/*.xml'
-                }
+                sh "docker build -t ${DOCKER_IMAGE} ."
             }
         }
-        
-        stage('Code Coverage') {
+
+        stage('Run Docker Container') {
             steps {
-                // Generate code coverage report
-                sh 'mvn jacoco:report'
-                echo 'Code coverage report generated'
-            }
-            post {
-                success {
-                    // Archive JaCoCo coverage report
-                    publishHTML(target: [
-                        allowMissing: false,
-                        alwaysLinkToLastBuild: false,
-                        keepAll: true,
-                        reportDir: 'target/site/jacoco',
-                        reportFiles: 'index.html',
-                        reportName: 'JaCoCo Code Coverage'
-                    ])
-                }
+                sh "docker run -d -p 8080:8080 --name ${DOCKER_IMAGE}-container ${DOCKER_IMAGE}"
             }
         }
-        
-        stage('Package') {
+
+        stage('Install ngrok') {
             steps {
-                // Package the application
-                sh 'mvn package -DskipTests'
-                echo 'Packaging complete'
+                sh """
+                if ! command -v ngrok &> /dev/null
+                then
+                    curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
+                    echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list
+                    sudo apt update && sudo apt install -y ngrok
+                fi
+                """
             }
-            post {
-                success {
-                    // Archive the built artifact
-                    archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
-                }
+        }
+
+        stage('Expose via ngrok') {
+            steps {
+                sh """
+                ngrok config add-authtoken ${NGROK_AUTH_TOKEN}
+                nohup ngrok http 8080 > /dev/null 2>&1 &
+                sleep 5
+                echo "Public URL:"
+                curl -s http://localhost:4040/api/tunnels | grep -o 'https://[a-zA-Z0-9.-]*ngrok-free.app'
+                """
             }
         }
     }
-    
+
     post {
         always {
-            // Clean the workspace
-            cleanWs()
-        }
-        
-        success {
-            // Send email on successful build
-            emailext (
-                subject: "SUCCESS: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]'",
-                body: """<p>BUILD SUCCESS</p>
-                         <p>Job: ${env.JOB_NAME} [${env.BUILD_NUMBER}]</p>
-                         <p>Check console output at: ${env.BUILD_URL}</p>""",
-                recipientProviders: [[$class: 'DevelopersRecipientProvider'], 
-                                    [$class: 'RequesterRecipientProvider']]
-            )
-        }
-        
-        failure {
-            // Send email on failed build
-            emailext (
-                subject: "FAILED: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]'",
-                body: """<p>BUILD FAILED</p>
-                         <p>Job: ${env.JOB_NAME} [${env.BUILD_NUMBER}]</p>
-                         <p>Check console output at: ${env.BUILD_URL}</p>""",
-                recipientProviders: [[$class: 'DevelopersRecipientProvider'], 
-                                    [$class: 'RequesterRecipientProvider']]
-            )
+            sh "docker rm -f ${DOCKER_IMAGE}-container || true"
         }
     }
 }
