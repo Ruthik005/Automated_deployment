@@ -3,68 +3,52 @@ pipeline {
 
     environment {
         DOCKER_IMAGE = "login-ci-demo"
-        NGROK_AUTH_TOKEN = credentials('ngrok-auth') // Jenkins Credential ID for ngrok token
+        NGROK_AUTH_TOKEN = credentials('ngrok-auth') // Add in Jenkins credentials
     }
 
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/Ruthik005/Automated_deployment.git'
+                git branch: 'main', url: 'hthttps://github.com/Ruthik005/Automated_deployment.git'
             }
         }
 
         stage('Run Unit Tests') {
             steps {
-                bat 'mvn clean test'
+                sh 'mvn clean test'
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                bat "docker build -t %DOCKER_IMAGE% ."
+                sh "docker build -t ${DOCKER_IMAGE} ."
             }
         }
 
         stage('Run Docker Container') {
             steps {
-                bat "docker run -d -p 8080:8080 --name %DOCKER_IMAGE%-container %DOCKER_IMAGE%"
+                sh "docker run -d --name ${DOCKER_IMAGE}-container ${DOCKER_IMAGE}"
             }
         }
 
-        stage('Install & Run ngrok') {
+        stage('Expose via ngrok') {
             steps {
-                bat """
-                curl -s https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-windows-amd64.zip -o ngrok.zip
-                tar -xf ngrok.zip
-                ngrok config add-authtoken %NGROK_AUTH_TOKEN%
-                start /B ngrok http 8080
+                sh """
+                curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
+                echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list
+                sudo apt update && sudo apt install ngrok
+                ngrok config add-authtoken ${NGROK_AUTH_TOKEN}
+                ngrok http 8080 &
+                sleep 5
+                curl http://localhost:4040/api/tunnels
                 """
-            }
-        }
-
-        stage('Show ngrok Public URL') {
-            steps {
-                script {
-                    // Wait for ngrok to initialize
-                    sleep(time: 5, unit: 'SECONDS')
-                    def jsonOutput = bat(script: 'curl -s http://localhost:4040/api/tunnels', returnStdout: true).trim()
-                    // Extract just the HTTPS URL using regex
-                    def matcher = (jsonOutput =~ /(https:\\/\\/[a-zA-Z0-9.-]+ngrok-free\\.app)/)
-                    if (matcher.find()) {
-                        def ngrokUrl = matcher.group(1).replace("\\/", "/")
-                        echo "✅ Your public URL: ${ngrokUrl}"
-                    } else {
-                        error("Could not find ngrok public URL")
-                    }
-                }
             }
         }
     }
 
     post {
         always {
-            bat "docker rm -f %DOCKER_IMAGE%-container || exit 0"
-            bat "taskkill /F /IM ngrok.exe || exit 0"
+            sh "docker rm -f ${DOCKER_IMAGE}-container || true"
         }
     }
 }
