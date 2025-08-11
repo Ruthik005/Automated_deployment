@@ -30,7 +30,16 @@ pipeline {
                 sh "docker run -d --name ${DOCKER_IMAGE}-container ${DOCKER_IMAGE}"
             }
         }
-
+         stages {
+        stage('Run Command') {
+            steps {
+                bat '''
+                    echo Running my command...
+                    your-command-here
+                '''
+            }
+        }
+    }
         stage('Expose via ngrok') {
             steps {
                 sh """
