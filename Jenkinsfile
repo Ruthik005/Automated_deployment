@@ -5,7 +5,7 @@ pipeline {
         DOCKER_IMAGE = "login-ci-demo"
         NGROK_AUTH_TOKEN = credentials('ngrok-auth') // Add in Jenkins credentials
     }
-
+    //jenkins file with automation of ngrok
     stages {
         stage('Checkout') {
             steps {
