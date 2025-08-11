@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 //main function
+//testing the output 18
 public class MainApp {
     public static void main(String[] args) throws IOException {
         // Start HTTP server on port 8080
