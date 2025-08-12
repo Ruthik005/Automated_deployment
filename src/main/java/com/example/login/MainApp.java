@@ -31,7 +31,7 @@ public class MainApp {
                 "Password@123",
                 "1995-08-15"
             );
-
+//checking the automation
             String response = "Login validation result: " + result;
             exchange.sendResponseHeaders(200, response.length());
             try (OutputStream os = exchange.getResponseBody()) {
