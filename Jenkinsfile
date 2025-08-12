@@ -3,7 +3,8 @@ pipeline {
 
     environment {
         IMAGE_NAME = "login-ci-demo"
-        IMAGE_TAG = "${env.BUILD_NUMBER}"   // Unique tag each build
+        IMAGE_TAG = "${env.BUILD_NUMBER}"   
+        // Unique tag each build
     }
 
     stages {
