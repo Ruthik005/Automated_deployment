@@ -3,8 +3,7 @@ pipeline {
 
     environment {
         IMAGE_NAME = "login-ci-demo"
-        IMAGE_TAG = "${env.BUILD_NUMBER}"   
-        // Unique tag each build
+        IMAGE_TAG = "latest"   // Always overwrite the same tag
     }
 
     stages {
@@ -40,7 +39,11 @@ pipeline {
 
         stage('Run Docker Container') {
             steps {
-                bat "docker run --rm -p 8080:8080 %IMAGE_NAME%:%IMAGE_TAG%"
+                bat """
+                docker stop %IMAGE_NAME% || true
+                docker rm %IMAGE_NAME% || true
+                docker run --rm -d -p 8081:8080 --name %IMAGE_NAME% %IMAGE_NAME%:%IMAGE_TAG%
+                """
             }
         }
     }
@@ -48,6 +51,7 @@ pipeline {
     post {
         always {
             echo "Pipeline finished with status: ${currentBuild.currentResult}"
+            bat "docker image prune -f"
         }
     }
 }
