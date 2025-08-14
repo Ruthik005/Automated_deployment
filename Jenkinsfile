@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         IMAGE_NAME = "login-ci-demo"
-        IMAGE_TAG = "latest"   // Always overwrite same image
+        IMAGE_TAG = "${env.BUILD_NUMBER}" // Unique tag per build
     }
 
     stages {
@@ -31,18 +31,20 @@ pipeline {
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Build Docker Image and Cleanup Old') {
             steps {
-                // Build without --no-cache so it reuses layers and overwrites 'latest'
-                bat "docker build -t %IMAGE_NAME%:%IMAGE_TAG% ."
-                // Optional: remove old dangling images immediately
-                bat "docker image prune -f"
+                bat """
+                REM Build new image with build number and latest tags
+                docker build --no-cache -t %IMAGE_NAME%:%IMAGE_TAG% -t %IMAGE_NAME%:latest .
+
+                REM Remove all old build number images except the current one
+                for /f "tokens=*" %%i in ('docker images %IMAGE_NAME% --format "{{.Repository}}:{{.Tag}}" ^| findstr /R ":[0-9][0-9]*" ^| findstr /V ":%IMAGE_TAG%"') do docker rmi -f %%i
+                """
             }
         }
 
         stage('Run Docker Container') {
             steps {
-                // Stop and remove container if running, then run the new one
                 bat """
                 docker stop %IMAGE_NAME% 2>nul
                 docker rm %IMAGE_NAME% 2>nul
@@ -55,6 +57,7 @@ pipeline {
     post {
         always {
             echo "Pipeline finished with status: ${currentBuild.currentResult}"
+            bat "docker image prune -f"
         }
     }
 }
