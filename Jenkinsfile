@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         IMAGE_NAME = "login-ci-demo"
-        IMAGE_TAG = "latest"   // Always overwrite the same tag
+        IMAGE_TAG = "latest"   // Always overwrite same image
     }
 
     stages {
@@ -31,18 +31,22 @@ pipeline {
             }
         }
 
-        stage('Build Docker Image (No Cache)') {
+        stage('Build Docker Image') {
             steps {
-                bat "docker build --no-cache -t %IMAGE_NAME%:%IMAGE_TAG% ."
+                // Build without --no-cache so it reuses layers and overwrites 'latest'
+                bat "docker build -t %IMAGE_NAME%:%IMAGE_TAG% ."
+                // Optional: remove old dangling images immediately
+                bat "docker image prune -f"
             }
         }
 
         stage('Run Docker Container') {
             steps {
+                // Stop and remove container if running, then run the new one
                 bat """
-                docker stop %IMAGE_NAME% || true
-                docker rm %IMAGE_NAME% || true
-                docker run --rm -d -p 8081:8080 --name %IMAGE_NAME% %IMAGE_NAME%:%IMAGE_TAG%
+                docker stop %IMAGE_NAME% 2>nul
+                docker rm %IMAGE_NAME% 2>nul
+                docker run -d -p 8081:8080 --name %IMAGE_NAME% %IMAGE_NAME%:%IMAGE_TAG%
                 """
             }
         }
@@ -51,7 +55,6 @@ pipeline {
     post {
         always {
             echo "Pipeline finished with status: ${currentBuild.currentResult}"
-            bat "docker image prune -f"
         }
     }
 }
