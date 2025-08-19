@@ -1,0 +1,30 @@
+# Created at 2025-08-19T15:10:44.864
+Corrupted STDOUT by directly writing to native stream in forked JVM 1. Stream '[0.031s][warning][cds] A jar file is not the one used while building the shared archive file: C:\Users\ruthi\AppData\Roaming\Code\User\globalStorage\pleiades.java-extension-pack-jdk\java\21\lib\modules'.
+java.lang.IllegalArgumentException: Stream stdin corrupted. Expected comma after third character in command '[0.031s][warning][cds] A jar file is not the one used while building the shared archive file: C:\Users\ruthi\AppData\Roaming\Code\User\globalStorage\pleiades.java-extension-pack-jdk\java\21\lib\modules'.
+	at org.apache.maven.plugin.surefire.booterclient.output.ForkClient$OperationalData.<init>(ForkClient.java:507)
+	at org.apache.maven.plugin.surefire.booterclient.output.ForkClient.processLine(ForkClient.java:210)
+	at org.apache.maven.plugin.surefire.booterclient.output.ForkClient.consumeLine(ForkClient.java:177)
+	at org.apache.maven.plugin.surefire.booterclient.output.ThreadedStreamConsumer$Pumper.run(ThreadedStreamConsumer.java:88)
+	at java.base/java.lang.Thread.run(Thread.java:1583)
+
+
+# Created at 2025-08-19T15:10:44.867
+Corrupted STDOUT by directly writing to native stream in forked JVM 1. Stream '[0.031s][warning][cds] A jar file is not the one used while building the shared archive file: C:\Users\ruthi\AppData\Roaming\Code\User\globalStorage\pleiades.java-extension-pack-jdk\java\21\lib\modules'.
+java.lang.IllegalArgumentException: Stream stdin corrupted. Expected comma after third character in command '[0.031s][warning][cds] A jar file is not the one used while building the shared archive file: C:\Users\ruthi\AppData\Roaming\Code\User\globalStorage\pleiades.java-extension-pack-jdk\java\21\lib\modules'.
+	at org.apache.maven.plugin.surefire.booterclient.output.ForkClient$OperationalData.<init>(ForkClient.java:507)
+	at org.apache.maven.plugin.surefire.booterclient.output.ForkClient.processLine(ForkClient.java:210)
+	at org.apache.maven.plugin.surefire.booterclient.output.ForkClient.consumeLine(ForkClient.java:177)
+	at org.apache.maven.plugin.surefire.booterclient.output.ThreadedStreamConsumer$Pumper.run(ThreadedStreamConsumer.java:88)
+	at java.base/java.lang.Thread.run(Thread.java:1583)
+
+
+# Created at 2025-08-19T15:10:44.867
+Corrupted STDOUT by directly writing to native stream in forked JVM 1. Stream '[0.031s][warning][cds] C:\Users\ruthi\AppData\Roaming\Code\User\globalStorage\pleiades.java-extension-pack-jdk\java\21\lib\modules timestamp has changed.'.
+java.lang.IllegalArgumentException: Stream stdin corrupted. Expected comma after third character in command '[0.031s][warning][cds] C:\Users\ruthi\AppData\Roaming\Code\User\globalStorage\pleiades.java-extension-pack-jdk\java\21\lib\modules timestamp has changed.'.
+	at org.apache.maven.plugin.surefire.booterclient.output.ForkClient$OperationalData.<init>(ForkClient.java:507)
+	at org.apache.maven.plugin.surefire.booterclient.output.ForkClient.processLine(ForkClient.java:210)
+	at org.apache.maven.plugin.surefire.booterclient.output.ForkClient.consumeLine(ForkClient.java:177)
+	at org.apache.maven.plugin.surefire.booterclient.output.ThreadedStreamConsumer$Pumper.run(ThreadedStreamConsumer.java:88)
+	at java.base/java.lang.Thread.run(Thread.java:1583)
+
+
