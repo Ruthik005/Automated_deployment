@@ -55,23 +55,37 @@ pipeline {
             }
         }
 
-        stage('Health Check') {
-            steps {
-                bat """
-                REM Wait ~20 seconds for the app to start
-                ping 127.0.0.1 -n 21 >nul
+       stage('Health Check') {
+    steps {
+        bat """
+        REM Wait ~20 seconds for the app to start
+        ping 127.0.0.1 -n 21 >nul
 
-                REM Check health endpoint (works with secure Spring Boot app)
-                curl -s http://localhost:%APP_PORT%/health | findstr /C:"OK"
-                if errorlevel 1 (
-                    echo Health check failed!
-                    exit /b 1
-                ) else (
-                    echo Health check passed.
-                )
-                """
-            }
-        }
+        REM Retry loop: check health endpoint up to 5 times
+        set RETRIES=5
+        set SUCCESS=0
+        :CHECK
+        curl -u admin:admin123 -s http://localhost:%APP_PORT%/health | findstr /C:"OK"
+        if %errorlevel%==0 (
+            set SUCCESS=1
+            goto END
+        ) else (
+            set /a RETRIES=%RETRIES%-1
+            if %RETRIES% GTR 0 (
+                ping 127.0.0.1 -n 6 >nul
+                goto CHECK
+            ) else (
+                echo Health check failed!
+                exit /b 1
+            )
+        )
+        :END
+        if %SUCCESS%==1 (
+            echo Health check passed.
+        )
+        """
+    }
+}
     }
 
     post {
