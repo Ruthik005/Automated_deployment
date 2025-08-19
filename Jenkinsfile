@@ -61,7 +61,7 @@ pipeline {
                 REM Wait ~20 seconds for the app to start
                 ping 127.0.0.1 -n 21 >nul
 
-                REM Check health endpoint
+                REM Check health endpoint (works with secure Spring Boot app)
                 curl -s http://localhost:%APP_PORT%/health | findstr /C:"OK"
                 if errorlevel 1 (
                     echo Health check failed!

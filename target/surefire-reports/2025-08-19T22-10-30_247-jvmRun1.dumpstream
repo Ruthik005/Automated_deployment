@@ -1,0 +1,9 @@
+# Created at 2025-08-19T22:10:30.682
+Corrupted channel by directly writing to native stream in forked JVM 1. Stream '[0.029s][warning][cds] A jar file is not the one used while building the shared archive file: C:\Users\ruthi\AppData\Roaming\Code\User\globalStorage\pleiades.java-extension-pack-jdk\java\21\lib\modules'.
+
+# Created at 2025-08-19T22:10:30.688
+Corrupted channel by directly writing to native stream in forked JVM 1. Stream '[0.029s][warning][cds] A jar file is not the one used while building the shared archive file: C:\Users\ruthi\AppData\Roaming\Code\User\globalStorage\pleiades.java-extension-pack-jdk\java\21\lib\modules'.
+
+# Created at 2025-08-19T22:10:31.539
+Corrupted channel by directly writing to native stream in forked JVM 1. Stream '[0.029s][warning][cds] C:\Users\ruthi\AppData\Roaming\Code\User\globalStorage\pleiades.java-extension-pack-jdk\java\21\lib\modules timestamp has changed.'.
+
