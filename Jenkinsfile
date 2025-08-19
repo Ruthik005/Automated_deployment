@@ -46,23 +46,23 @@ pipeline {
         }
 
         stage('Health Check') {
-            steps {
-                bat """
-                REM Wait a few seconds for the app to start
-                timeout /t 5
+    steps {
+        bat """
+        REM Wait ~10 seconds for app to start
+        ping 127.0.0.1 -n 11 >nul
 
-                REM Check health endpoint
-                curl -s http://localhost:%APP_PORT%/health | findstr "UP"
-                if errorlevel 1 (
-                    echo Health check failed!
-                    exit /b 1
-                ) else (
-                    echo Health check passed.
-                )
-                """
-            }
-        }
+        REM Check health endpoint
+        curl -s http://localhost:%APP_PORT%/health | findstr "UP"
+        if errorlevel 1 (
+            echo Health check failed!
+            exit /b 1
+        ) else (
+            echo Health check passed.
+        )
+        """
     }
+}
+
 
     post {
         always {
