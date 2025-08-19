@@ -46,10 +46,13 @@ pipeline {
     }
 
     post {
-        always {
-            echo "Pipeline finished with status: ${currentBuild.currentResult}"
-            REM Remove dangling images (optional cleanup)
-            bat "docker image prune -f"
-        }
+    always {
+        echo "Pipeline finished with status: ${currentBuild.currentResult}"
+        bat """
+        REM Remove dangling images (optional cleanup)
+        docker image prune -f
+        """
     }
+}
+
 }
