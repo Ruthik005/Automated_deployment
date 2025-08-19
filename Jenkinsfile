@@ -58,31 +58,44 @@ pipeline {
         stage('Health Check') {
             steps {
                 bat """
-                REM Wait ~20 seconds for the app to start
-                ping 127.0.0.1 -n 21 >nul
+                @echo off
+                REM -----------------------------
+                REM Robust Health Check Script
+                REM -----------------------------
+                setlocal enabledelayedexpansion
 
-                REM Retry loop: check health endpoint up to 10 times
                 set RETRIES=10
                 set SUCCESS=0
+
                 :CHECK
-                for /f "delims=" %%a in ('curl -s -u admin:admin123 http://localhost:%APP_PORT%/health') do set RESPONSE=%%a
-                if "%RESPONSE%"=="OK" (
+                for /f "delims=" %%a in ('curl -s -u admin:admin123 http://localhost:%APP_PORT%/health') do (
+                    set RESPONSE=%%a
+                    REM Take only first 2 characters to trim CR/LF
+                    set RESPONSE=!RESPONSE:~0,2!
+                )
+
+                echo Response received: "!RESPONSE!"
+
+                if /i "!RESPONSE!"=="OK" (
                     set SUCCESS=1
                     goto END
                 ) else (
-                    set /a RETRIES=%RETRIES%-1
-                    if %RETRIES% GTR 0 (
+                    set /a RETRIES=!RETRIES!-1
+                    if !RETRIES! GTR 0 (
+                        echo Health check failed, retrying... Remaining retries: !RETRIES!
                         ping 127.0.0.1 -n 6 >nul
                         goto CHECK
                     ) else (
-                        echo Health check failed!
+                        echo Health check failed after all retries!
                         exit /b 1
                     )
                 )
+
                 :END
-                if %SUCCESS%==1 (
+                if !SUCCESS!==1 (
                     echo Health check passed.
                 )
+                endlocal
                 """
             }
         }
