@@ -14,21 +14,6 @@ pipeline {
             }
         }
 
-        stage('Clean Old Docker Images') {
-            steps {
-                bat """
-                REM Stop and remove any running container of this project
-                for /F "tokens=*" %%c in ('docker ps -a -q --filter "ancestor=%IMAGE_NAME%"') do (
-                    docker stop %%c
-                    docker rm %%c
-                )
-
-                REM Remove all old images of this project
-                for /F "tokens=*" %%i in ('docker images %IMAGE_NAME% --format "{{.ID}}"') do docker rmi -f %%i
-                """
-            }
-        }
-
         stage('Build & Test in Docker') {
             steps {
                 bat """
@@ -38,13 +23,34 @@ pipeline {
             }
         }
 
+        stage('Stop & Remove Old Containers') {
+            steps {
+                bat """
+                REM Stop and remove any running containers of this project
+                for /F "tokens=*" %%c in ('docker ps -a -q --filter "ancestor=%IMAGE_NAME%"') do (
+                    docker stop %%c
+                    docker rm %%c
+                )
+                """
+            }
+        }
+
+        stage('Remove Old Images') {
+            steps {
+                bat """
+                REM Remove all old images except the newly built one
+                for /F "tokens=*" %%i in ('docker images %IMAGE_NAME% --format "{{.ID}} {{.Tag}}"') do (
+                    for /F "tokens=1,2" %%a in ("%%i") do (
+                        if NOT "%%b"=="%IMAGE_TAG%" docker rmi -f %%a
+                    )
+                )
+                """
+            }
+        }
+
         stage('Run Docker Container') {
             steps {
                 bat """
-                REM Stop and remove existing container if running
-                docker stop %IMAGE_NAME% 2>nul
-                docker rm %IMAGE_NAME% 2>nul
-
                 REM Run container on port 8081
                 docker run -d -p %APP_PORT%:%APP_PORT% --name %IMAGE_NAME% %IMAGE_NAME%:%IMAGE_TAG%
                 """
@@ -74,7 +80,7 @@ pipeline {
         always {
             echo "Pipeline finished with status: ${currentBuild.currentResult}"
             bat """
-            REM Remove dangling images (optional cleanup)
+            REM Optional: Remove dangling images
             docker image prune -f
             """
         }
