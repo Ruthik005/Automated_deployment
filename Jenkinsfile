@@ -24,16 +24,17 @@ pipeline {
         }
 
         stage('Stop & Remove Old Containers') {
-            steps {
-                bat """
-                REM Stop and remove any running containers of this project
-                for /F "tokens=*" %%c in ('docker ps -a -q --filter "ancestor=%IMAGE_NAME%"') do (
-                    docker stop %%c
-                    docker rm %%c
-                )
-                """
-            }
-        }
+    steps {
+        bat """
+        REM Stop and remove any running containers of this project
+        for /F "tokens=*" %%c in ('docker ps -a -q --filter "ancestor=%IMAGE_NAME%"') do (
+            docker stop %%c 2>nul
+            docker rm %%c 2>nul
+        )
+        """
+    }
+}
+
 
         stage('Remove Old Images') {
             steps {
