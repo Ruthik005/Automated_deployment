@@ -15,24 +15,13 @@ pipeline {
         }
 
         stage('Clean Old Docker Images') {
-        steps {
-        bat """
-        REM Stop and remove any running container of this project
-        for /F "tokens=*" %%c in ('docker ps -a -q') do (
-            for /F "tokens=*" %%i in ('docker inspect --format "{{.Config.Image}}" %%c') do (
-                echo Checking container %%c with image %%i
-                if "%%i"=="%IMAGE_NAME%" (
-                    docker stop %%c
-                    docker rm %%c
-                )
-            )
-        )
-        REM Remove all old images of this project
-        for /F "tokens=*" %%i in ('docker images %IMAGE_NAME% --format "{{.ID}}"') do docker rmi -f %%i
-        """
-    }
-}
-
+            steps {
+                bat """
+                REM Remove all old images of this project
+                for /F "tokens=*" %%i in ('docker images %IMAGE_NAME% --format "{{.ID}}"') do docker rmi -f %%i
+                """
+            }
+        }
 
         stage('Build & Test in Docker') {
             steps {
@@ -62,13 +51,13 @@ pipeline {
                 REM Wait ~20 seconds for app to start
                 ping 127.0.0.1 -n 21 >nul
 
-                REM Check health endpoint (looking for "OK")
+                REM Check health endpoint
                 curl -s http://localhost:%APP_PORT%/health | findstr /C:"OK"
                 if errorlevel 1 (
-                    echo Health check failed!
-                    exit /b 1
+                echo Health check failed!
+                exit /b 1
                 ) else (
-                    echo Health check passed.
+                echo Health check passed.
                 )
                 """
             }
