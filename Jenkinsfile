@@ -4,6 +4,7 @@ pipeline {
     environment {
         IMAGE_NAME = "login-ci-demo"
         IMAGE_TAG = "${env.BUILD_NUMBER}"
+        APP_PORT = "8081"
     }
 
     stages {
@@ -39,20 +40,37 @@ pipeline {
                 docker rm %IMAGE_NAME% 2>nul
 
                 REM Run container on port 8081
-                docker run -d -p 8081:8081 --name %IMAGE_NAME% %IMAGE_NAME%:%IMAGE_TAG%
+                docker run -d -p %APP_PORT%:%APP_PORT% --name %IMAGE_NAME% %IMAGE_NAME%:%IMAGE_TAG%
+                """
+            }
+        }
+
+        stage('Health Check') {
+            steps {
+                bat """
+                REM Wait a few seconds for the app to start
+                timeout /t 5
+
+                REM Check health endpoint
+                curl -s http://localhost:%APP_PORT%/health | findstr "UP"
+                if errorlevel 1 (
+                    echo Health check failed!
+                    exit /b 1
+                ) else (
+                    echo Health check passed.
+                )
                 """
             }
         }
     }
 
     post {
-    always {
-        echo "Pipeline finished with status: ${currentBuild.currentResult}"
-        bat """
-        REM Remove dangling images (optional cleanup)
-        docker image prune -f
-        """
+        always {
+            echo "Pipeline finished with status: ${currentBuild.currentResult}"
+            bat """
+            REM Remove dangling images (optional cleanup)
+            docker image prune -f
+            """
+        }
     }
-}
-
 }
