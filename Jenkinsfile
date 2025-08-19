@@ -15,19 +15,24 @@ pipeline {
         }
 
         stage('Clean Old Docker Images') {
-            steps {
-                bat """
-                REM Stop and remove any running container of this project
-                for /F "tokens=*" %%c in ('docker ps -a -q --filter "ancestor=%IMAGE_NAME%"') do (
+        steps {
+        bat """
+        REM Stop and remove any running container of this project
+        for /F "tokens=*" %%c in ('docker ps -a -q') do (
+            for /F "tokens=*" %%i in ('docker inspect --format "{{.Config.Image}}" %%c') do (
+                echo Checking container %%c with image %%i
+                if "%%i"=="%IMAGE_NAME%" (
                     docker stop %%c
                     docker rm %%c
                 )
+            )
+        )
+        REM Remove all old images of this project
+        for /F "tokens=*" %%i in ('docker images %IMAGE_NAME% --format "{{.ID}}"') do docker rmi -f %%i
+        """
+    }
+}
 
-                REM Remove all old images of this project
-                for /F "tokens=*" %%i in ('docker images %IMAGE_NAME% --format "{{.ID}}"') do docker rmi -f %%i
-                """
-            }
-        }
 
         stage('Build & Test in Docker') {
             steps {
