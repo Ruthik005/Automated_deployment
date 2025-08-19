@@ -1,27 +1,25 @@
-# Use official Maven image to build the app
+# Stage 1: Build the app with Maven
 FROM maven:3.9.6-eclipse-temurin-21 AS build
 
-# Set working directory
 WORKDIR /app
 
-# Copy pom.xml and source code
-COPY pom.xml . 
+# Copy pom and source
+COPY pom.xml .
 COPY src ./src
 
-# Build the JAR
+# Build JAR without running tests
 RUN mvn clean package -DskipTests
 
-# Use smaller Java runtime for final image
+# Stage 2: Use lightweight Java runtime
 FROM eclipse-temurin:21-jre
 
-# Set working directory
 WORKDIR /app
 
-# Copy built JAR from build stage
+# Copy the built JAR from the previous stage
 COPY --from=build /app/target/login-ci-demo-1.0.jar app.jar
 
-# Expose port 8081
+# Expose Docker port 8081
 EXPOSE 8081
 
-# Run the application
+# Run the Spring Boot app
 ENTRYPOINT ["java", "-jar", "app.jar"]
