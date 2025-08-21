@@ -5,6 +5,7 @@ pipeline {
         IMAGE_NAME = "login-ci-demo"
         IMAGE_TAG = "${env.BUILD_NUMBER}"  // Unique tag per build
         APP_PORT = "8081"
+        DOCKER_HUB_REPO = "ruthik005/capstone_project"  // <-- replace with your Docker Hub repo
     }
 
     stages {
@@ -97,6 +98,28 @@ pipeline {
                 )
                 endlocal
                 """
+            }
+        }
+
+        stage('Push to Docker Hub') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'docker-hub', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    bat """
+                    REM Login to Docker Hub
+                    echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin
+
+                    REM Tag image for Docker Hub
+                    docker tag %IMAGE_NAME%:%IMAGE_TAG% %DOCKER_HUB_REPO%:%IMAGE_TAG%
+                    docker tag %IMAGE_NAME%:%IMAGE_TAG% %DOCKER_HUB_REPO%:latest
+
+                    REM Push both tags
+                    docker push %DOCKER_HUB_REPO%:%IMAGE_TAG%
+                    docker push %DOCKER_HUB_REPO%:latest
+
+                    REM Logout for security
+                    docker logout
+                    """
+                }
             }
         }
     }
