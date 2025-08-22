@@ -15,25 +15,24 @@ pipeline {
             }
         }
 
-      stage('Clean Old Docker Images & Containers') {
-    steps {
-        bat """
-        REM Stop and remove all running containers silently
-        for /F "tokens=*" %%c in ('docker ps -a -q --filter "ancestor=%IMAGE_NAME%"') do (
-            docker stop %%c 1>nul 2>&1
-            docker rm %%c 1>nul 2>&1
-        )
+        stage('Clean Old Docker Images & Containers') {
+            steps {
+                bat """
+                REM Stop and remove all running containers silently
+                for /F "tokens=*" %%c in ('docker ps -a -q --filter "ancestor=%IMAGE_NAME%"') do (
+                    docker stop %%c 1>nul 2>&1 & 
+                    docker rm %%c 1>nul 2>&1
+                )
 
-        REM Remove old images except the newly built one silently
-        for /F "tokens=*" %%i in ('docker images %IMAGE_NAME% --format "{{.ID}} {{.Tag}}"') do (
-            for /F "tokens=1,2" %%a in ("%%i") do (
-                if NOT "%%b"=="%IMAGE_TAG%" docker rmi -f %%a 1>nul 2>&1
-            )
-        )
-        """
-    }
-}
-
+                REM Remove old images except the newly built one silently
+                for /F "tokens=*" %%i in ('docker images %IMAGE_NAME% --format "{{.ID}} {{.Tag}}"') do (
+                    for /F "tokens=1,2" %%a in ("%%i") do (
+                        if NOT "%%b"=="%IMAGE_TAG%" docker rmi -f %%a 1>nul 2>&1
+                    )
+                )
+                """
+            }
+        }
 
         stage('Build Docker Image') {
             steps {
@@ -70,9 +69,6 @@ pipeline {
             steps {
                 bat """
                 @echo off
-                REM -----------------------------
-                REM Robust Health Check Script
-                REM -----------------------------
                 setlocal enabledelayedexpansion
 
                 set RETRIES=10
