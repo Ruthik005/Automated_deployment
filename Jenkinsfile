@@ -5,7 +5,7 @@ pipeline {
         IMAGE_NAME = "login-ci-demo"
         IMAGE_TAG = "${env.BUILD_NUMBER}"  // Unique tag per build
         APP_PORT = "8081"
-        DOCKER_HUB_REPO = "ruthik005/capstone_project"  // <-- replace with your Docker Hub repo
+        DOCKER_HUB_REPO = "ruthik005/capstone_project"  // <-- your Docker Hub repo
     }
 
     stages {
@@ -20,15 +20,13 @@ pipeline {
                 bat """
                 REM Stop and remove all running containers silently
                 for /F "tokens=*" %%c in ('docker ps -a -q --filter "ancestor=%IMAGE_NAME%"') do (
-                    docker stop %%c 1>nul 2>&1 & 
-                    docker rm %%c 1>nul 2>&1
+                    docker stop %%c >nul 2>&1
+                    docker rm %%c >nul 2>&1
                 )
 
                 REM Remove old images except the newly built one silently
-                for /F "tokens=*" %%i in ('docker images %IMAGE_NAME% --format "{{.ID}} {{.Tag}}"') do (
-                    for /F "tokens=1,2" %%a in ("%%i") do (
-                        if NOT "%%b"=="%IMAGE_TAG%" docker rmi -f %%a 1>nul 2>&1
-                    )
+                for /F "tokens=1,2" %%a in ('docker images %IMAGE_NAME% --format "%%.ID %%TAG"') do (
+                    if NOT "%%b"=="%IMAGE_TAG%" docker rmi -f %%a >nul 2>&1
                 )
                 """
             }
@@ -46,7 +44,7 @@ pipeline {
         stage('Trivy Security Scan') {
             steps {
                 bat """
-                REM Scan Docker image for vulnerabilities (HIGH & CRITICAL)
+                REM Scan Docker image for vulnerabilities
                 "C:/ProgramData/chocolatey/bin/trivy.exe" image --severity HIGH,CRITICAL --exit-code 1 --ignore-unfixed --no-progress %IMAGE_NAME%:%IMAGE_TAG%
                 """
             }
@@ -56,8 +54,8 @@ pipeline {
             steps {
                 bat """
                 REM Stop & remove existing container silently
-                docker stop %IMAGE_NAME% >nul 2>&1 || exit /b 0
-                docker rm %IMAGE_NAME% >nul 2>&1 || exit /b 0
+                docker stop %IMAGE_NAME% >nul 2>&1
+                docker rm %IMAGE_NAME% >nul 2>&1
 
                 REM Run container on specified port
                 docker run -d -p %APP_PORT%:%APP_PORT% --name %IMAGE_NAME% %IMAGE_NAME%:%IMAGE_TAG%
@@ -121,7 +119,7 @@ pipeline {
                     docker push %DOCKER_HUB_REPO%:%IMAGE_TAG%
                     docker push %DOCKER_HUB_REPO%:latest
 
-                    REM Logout for security
+                    REM Logout
                     docker logout
                     """
                 }
@@ -133,8 +131,8 @@ pipeline {
         always {
             echo "Pipeline finished with status: ${currentBuild.currentResult}"
             bat """
-            REM Optional: Clean dangling images silently
-            docker system prune -f >nul 2>&1 || exit /b 0
+            REM Clean dangling images silently
+            docker system prune -f >nul 2>&1
             """
         }
     }
