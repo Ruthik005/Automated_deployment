@@ -23,7 +23,8 @@ FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
 # Copy the built JAR from the build stage
-COPY --from=build /app/target/login-ci-demo-1.0.0.jar app.jar
+# ⚠️ Fix: Match the actual JAR name produced by Maven
+COPY --from=build /app/target/login-ci-demo-1.0.jar app.jar
 
 # Expose the application port
 EXPOSE 8081
@@ -36,5 +37,4 @@ USER spring:spring
 ENTRYPOINT ["java", "-jar", "app.jar"]
 
 # Optional: reduce JVM attack surface
-# Use minimal memory and disable insecure options if needed
 # CMD ["java", "-XX:+UseContainerSupport", "-Xmx512m", "-jar", "app.jar"]
