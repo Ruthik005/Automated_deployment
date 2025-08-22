@@ -19,22 +19,48 @@ pipeline {
             steps {
                 bat """
                 @echo off
-                REM -----------------------------
-                REM Stop and remove all running containers silently
-                REM -----------------------------
-                for /F "tokens=*" %%c in ('docker ps -a -q --filter "ancestor=%IMAGE_NAME%" 2^>nul') do (
-                    docker stop %%c >nul 2>&1
-                    docker rm %%c >nul 2>&1
-                )
+                setlocal enabledelayedexpansion
+
+                echo Starting cleanup process...
 
                 REM -----------------------------
-                REM Remove old images except the newly built one silently
+                REM Stop and remove containers for this image
                 REM -----------------------------
-                for /F "tokens=1,2" %%a in ('docker images %IMAGE_NAME% --format "{{.ID}} {{.Tag}}" 2^>nul') do (
-                    if NOT "%%b"=="%IMAGE_TAG%" (
-                        docker rmi -f %%a >nul 2>&1
+                echo Stopping and removing containers for image: ${IMAGE_NAME}
+                
+                docker ps -a -q --filter "ancestor=${IMAGE_NAME}" > temp_containers.txt 2>nul
+                if exist temp_containers.txt (
+                    for /f %%i in (temp_containers.txt) do (
+                        echo Stopping container: %%i
+                        docker stop %%i >nul 2>&1
+                        echo Removing container: %%i
+                        docker rm %%i >nul 2>&1
                     )
+                    del temp_containers.txt
                 )
+
+                REM Also remove any container with the same name
+                docker stop ${IMAGE_NAME} >nul 2>&1
+                docker rm ${IMAGE_NAME} >nul 2>&1
+
+                REM -----------------------------
+                REM Remove old images except current build tag
+                REM -----------------------------
+                echo Cleaning old images for: ${IMAGE_NAME}
+                
+                docker images ${IMAGE_NAME} --format "{{.ID}} {{.Tag}}" > temp_images.txt 2>nul
+                if exist temp_images.txt (
+                    for /f "tokens=1,2" %%a in (temp_images.txt) do (
+                        if NOT "%%b"=="${IMAGE_TAG}" (
+                            echo Removing old image: %%a with tag %%b
+                            docker rmi -f %%a >nul 2>&1
+                        )
+                    )
+                    del temp_images.txt
+                )
+
+                echo Cleanup completed successfully.
+                endlocal
                 """
             }
         }
@@ -43,8 +69,8 @@ pipeline {
             steps {
                 bat """
                 @echo off
-                REM Build Docker image (runs tests automatically in Maven container)
-                docker build --no-cache -t %IMAGE_NAME%:%IMAGE_TAG% .
+                echo Building Docker image: ${IMAGE_NAME}:${IMAGE_TAG}
+                docker build --no-cache -t ${IMAGE_NAME}:${IMAGE_TAG} .
                 """
             }
         }
@@ -53,12 +79,16 @@ pipeline {
             steps {
                 bat """
                 @echo off
+                echo Preparing to run container...
+                
                 REM Stop & remove existing container silently
-                docker stop %IMAGE_NAME% >nul 2>&1
-                docker rm %IMAGE_NAME% >nul 2>&1
+                docker stop ${IMAGE_NAME} >nul 2>&1
+                docker rm ${IMAGE_NAME} >nul 2>&1
 
-                REM Run container on specified port
-                docker run -d -p %APP_PORT%:%APP_PORT% --name %IMAGE_NAME% %IMAGE_NAME%:%IMAGE_TAG%
+                echo Starting container on port ${APP_PORT}
+                docker run -d -p ${APP_PORT}:${APP_PORT} --name ${IMAGE_NAME} ${IMAGE_NAME}:${IMAGE_TAG}
+                
+                echo Container started successfully.
                 """
             }
         }
@@ -67,40 +97,44 @@ pipeline {
             steps {
                 bat """
                 @echo off
-                REM -----------------------------
-                REM Robust Health Check Script
-                REM -----------------------------
                 setlocal enabledelayedexpansion
 
+                echo Starting health check...
                 set RETRIES=10
                 set SUCCESS=0
 
                 :CHECK
-                for /f "delims=" %%a in ('curl -s -u admin:admin123 http://localhost:%APP_PORT%/health 2^>nul') do (
+                echo Attempting health check... Retries remaining: !RETRIES!
+                
+                REM Use timeout command for better reliability
+                timeout /t 5 /nobreak >nul
+                
+                for /f "delims=" %%a in ('curl -s -u admin:admin123 http://localhost:${APP_PORT}/health 2^>nul') do (
                     set RESPONSE=%%a
-                    set RESPONSE=!RESPONSE:~0,2!
                 )
 
                 echo Response received: "!RESPONSE!"
 
-                if /i "!RESPONSE!"=="OK" (
+                REM Check if response contains "OK" anywhere in the response
+                echo !RESPONSE! | findstr /C:"OK" >nul
+                if !ERRORLEVEL! EQU 0 (
                     set SUCCESS=1
                     goto END
                 ) else (
                     set /a RETRIES=!RETRIES!-1
                     if !RETRIES! GTR 0 (
-                        echo Health check failed, retrying... Remaining retries: !RETRIES!
-                        ping 127.0.0.1 -n 6 >nul
+                        echo Health check failed, retrying...
                         goto CHECK
                     ) else (
                         echo Health check failed after all retries!
+                        echo Final response was: !RESPONSE!
                         exit /b 1
                     )
                 )
 
                 :END
                 if !SUCCESS!==1 (
-                    echo Health check passed.
+                    echo Health check passed successfully.
                 )
                 endlocal
                 """
@@ -112,18 +146,18 @@ pipeline {
                 withCredentials([usernamePassword(credentialsId: 'docker-hub', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                     bat """
                     @echo off
-                    REM Login to Docker Hub
+                    echo Logging into Docker Hub...
                     echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin
 
-                    REM Tag image for Docker Hub
-                    docker tag %IMAGE_NAME%:%IMAGE_TAG% %DOCKER_HUB_REPO%:%IMAGE_TAG%
-                    docker tag %IMAGE_NAME%:%IMAGE_TAG% %DOCKER_HUB_REPO%:latest
+                    echo Tagging images...
+                    docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${DOCKER_HUB_REPO}:${IMAGE_TAG}
+                    docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${DOCKER_HUB_REPO}:latest
 
-                    REM Push both tags
-                    docker push %DOCKER_HUB_REPO%:%IMAGE_TAG%
-                    docker push %DOCKER_HUB_REPO%:latest
+                    echo Pushing images to Docker Hub...
+                    docker push ${DOCKER_HUB_REPO}:${IMAGE_TAG}
+                    docker push ${DOCKER_HUB_REPO}:latest
 
-                    REM Logout for security
+                    echo Logging out for security...
                     docker logout
                     """
                 }
@@ -136,8 +170,17 @@ pipeline {
             echo "Pipeline finished with status: ${currentBuild.currentResult}"
             bat """
             @echo off
-            REM Optional: Clean dangling images silently
+            echo Performing final cleanup...
             docker system prune -f >nul 2>&1
+            echo Cleanup completed.
+            """
+        }
+        failure {
+            bat """
+            @echo off
+            echo Pipeline failed. Checking Docker status...
+            docker ps -a
+            docker images
             """
         }
     }
