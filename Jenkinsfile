@@ -17,51 +17,31 @@ pipeline {
 
         stage('Clean Old Docker Images & Containers') {
             steps {
-                bat """
-                @echo off
-                setlocal enabledelayedexpansion
+                script {
+                    try {
+                        bat '''
+                        @echo off
+                        echo Starting cleanup process...
 
-                echo Starting cleanup process...
+                        REM Stop and remove existing container by name
+                        docker stop %IMAGE_NAME% >nul 2>&1
+                        if %ERRORLEVEL% NEQ 0 echo Container %IMAGE_NAME% was not running
 
-                REM -----------------------------
-                REM Stop and remove containers for this image
-                REM -----------------------------
-                echo Stopping and removing containers for image: ${IMAGE_NAME}
-                
-                docker ps -a -q --filter "ancestor=${IMAGE_NAME}" > temp_containers.txt 2>nul
-                if exist temp_containers.txt (
-                    for /f %%i in (temp_containers.txt) do (
-                        echo Stopping container: %%i
-                        docker stop %%i >nul 2>&1
-                        echo Removing container: %%i
-                        docker rm %%i >nul 2>&1
-                    )
-                    del temp_containers.txt
-                )
+                        docker rm %IMAGE_NAME% >nul 2>&1
+                        if %ERRORLEVEL% NEQ 0 echo Container %IMAGE_NAME% was not found
 
-                REM Also remove any container with the same name
-                docker stop ${IMAGE_NAME} >nul 2>&1
-                docker rm ${IMAGE_NAME} >nul 2>&1
+                        REM Clean up any dangling containers and images
+                        docker container prune -f >nul 2>&1
+                        docker image prune -f >nul 2>&1
 
-                REM -----------------------------
-                REM Remove old images except current build tag
-                REM -----------------------------
-                echo Cleaning old images for: ${IMAGE_NAME}
-                
-                docker images ${IMAGE_NAME} --format "{{.ID}} {{.Tag}}" > temp_images.txt 2>nul
-                if exist temp_images.txt (
-                    for /f "tokens=1,2" %%a in (temp_images.txt) do (
-                        if NOT "%%b"=="${IMAGE_TAG}" (
-                            echo Removing old image: %%a with tag %%b
-                            docker rmi -f %%a >nul 2>&1
-                        )
-                    )
-                    del temp_images.txt
-                )
-
-                echo Cleanup completed successfully.
-                endlocal
-                """
+                        echo Cleanup completed successfully.
+                        exit /b 0
+                        '''
+                    } catch (Exception e) {
+                        echo "Cleanup stage had issues but continuing: ${e.getMessage()}"
+                        // Continue with pipeline even if cleanup fails
+                    }
+                }
             }
         }
 
@@ -93,48 +73,44 @@ pipeline {
             }
         }
 
-        stage('Health Check') {
+            stage('Health Check') {
             steps {
                 bat """
                 @echo off
+                REM -----------------------------
+                REM Robust Health Check Script
+                REM -----------------------------
                 setlocal enabledelayedexpansion
 
-                echo Starting health check...
                 set RETRIES=10
                 set SUCCESS=0
 
                 :CHECK
-                echo Attempting health check... Retries remaining: !RETRIES!
-                
-                REM Use timeout command for better reliability
-                timeout /t 5 /nobreak >nul
-                
-                for /f "delims=" %%a in ('curl -s -u admin:admin123 http://localhost:${APP_PORT}/health 2^>nul') do (
+                for /f "delims=" %%a in ('curl -s -u admin:admin123 http://localhost:%APP_PORT%/health') do (
                     set RESPONSE=%%a
+                    set RESPONSE=!RESPONSE:~0,2!
                 )
 
                 echo Response received: "!RESPONSE!"
 
-                REM Check if response contains "OK" anywhere in the response
-                echo !RESPONSE! | findstr /C:"OK" >nul
-                if !ERRORLEVEL! EQU 0 (
+                if /i "!RESPONSE!"=="OK" (
                     set SUCCESS=1
                     goto END
                 ) else (
                     set /a RETRIES=!RETRIES!-1
                     if !RETRIES! GTR 0 (
-                        echo Health check failed, retrying...
+                        echo Health check failed, retrying... Remaining retries: !RETRIES!
+                        ping 127.0.0.1 -n 6 >nul
                         goto CHECK
                     ) else (
                         echo Health check failed after all retries!
-                        echo Final response was: !RESPONSE!
                         exit /b 1
                     )
                 )
 
                 :END
                 if !SUCCESS!==1 (
-                    echo Health check passed successfully.
+                    echo Health check passed.
                 )
                 endlocal
                 """
