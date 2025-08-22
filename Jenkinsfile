@@ -47,7 +47,7 @@ pipeline {
             steps {
                 bat """
                 REM Scan Docker image for vulnerabilities (HIGH & CRITICAL)
-                "C:\ProgramData\chocolatey\bin\trivy.exe" image --severity HIGH,CRITICAL --exit-code 1 --ignore-unfixed --no-progress %IMAGE_NAME%:%IMAGE_TAG%
+                "C:/ProgramData/chocolatey/bin/trivy.exe" image --severity HIGH,CRITICAL --exit-code 1 --ignore-unfixed --no-progress %IMAGE_NAME%:%IMAGE_TAG%
                 """
             }
         }
