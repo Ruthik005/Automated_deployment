@@ -5,7 +5,7 @@ pipeline {
         IMAGE_NAME = "login-ci-demo"
         IMAGE_TAG = "${env.BUILD_NUMBER}"  // Unique tag per build
         APP_PORT = "8081"
-        DOCKER_HUB_REPO = "ruthik005/capstone_project"  // <-- your Docker Hub repo
+        DOCKER_HUB_REPO = "ruthik005/capstone_project"  // <-- replace with your Docker Hub repo
     }
 
     stages {
@@ -18,15 +18,22 @@ pipeline {
         stage('Clean Old Docker Images & Containers') {
             steps {
                 bat """
-                REM Stop and remove all running containers silently
-                for /F "tokens=*" %%c in ('docker ps -a -q --filter "ancestor=%IMAGE_NAME%"') do (
-                    docker stop %%c >nul 2>&1
-                    docker rm %%c >nul 2>&1
+                @echo off
+                REM -----------------------------
+                REM Stop and remove all running containers safely
+                REM -----------------------------
+                for /F "tokens=*" %%c in ('docker ps -a -q --filter "ancestor=%IMAGE_NAME%" 2^>nul') do (
+                    docker stop %%c >nul 2>&1 || echo No container %%c running
+                    docker rm %%c >nul 2>&1 || echo No container %%c to remove
                 )
 
-                REM Remove old images except the newly built one silently
-                for /F "tokens=1,2" %%a in ('docker images %IMAGE_NAME% --format "%%.ID %%TAG"') do (
-                    if NOT "%%b"=="%IMAGE_TAG%" docker rmi -f %%a >nul 2>&1
+                REM -----------------------------
+                REM Remove old images except the newly built one safely
+                REM -----------------------------
+                for /F "tokens=1,2" %%a in ('docker images %IMAGE_NAME% --format "{{.ID}} {{.Tag}}" 2^>nul') do (
+                    if NOT "%%b"=="%IMAGE_TAG%" (
+                        docker rmi -f %%a >nul 2>&1 || echo Image %%a not removed
+                    )
                 )
                 """
             }
@@ -44,7 +51,7 @@ pipeline {
         stage('Trivy Security Scan') {
             steps {
                 bat """
-                REM Scan Docker image for vulnerabilities
+                REM Scan Docker image for vulnerabilities (HIGH & CRITICAL)
                 "C:/ProgramData/chocolatey/bin/trivy.exe" image --severity HIGH,CRITICAL --exit-code 1 --ignore-unfixed --no-progress %IMAGE_NAME%:%IMAGE_TAG%
                 """
             }
@@ -53,9 +60,9 @@ pipeline {
         stage('Run Docker Container') {
             steps {
                 bat """
-                REM Stop & remove existing container silently
-                docker stop %IMAGE_NAME% >nul 2>&1
-                docker rm %IMAGE_NAME% >nul 2>&1
+                REM Stop & remove existing container safely
+                docker stop %IMAGE_NAME% >nul 2>&1 || echo No running container
+                docker rm %IMAGE_NAME% >nul 2>&1 || echo No container to remove
 
                 REM Run container on specified port
                 docker run -d -p %APP_PORT%:%APP_PORT% --name %IMAGE_NAME% %IMAGE_NAME%:%IMAGE_TAG%
@@ -119,7 +126,7 @@ pipeline {
                     docker push %DOCKER_HUB_REPO%:%IMAGE_TAG%
                     docker push %DOCKER_HUB_REPO%:latest
 
-                    REM Logout
+                    REM Logout for security
                     docker logout
                     """
                 }
@@ -131,8 +138,8 @@ pipeline {
         always {
             echo "Pipeline finished with status: ${currentBuild.currentResult}"
             bat """
-            REM Clean dangling images silently
-            docker system prune -f >nul 2>&1
+            REM Optional: Clean dangling images silently
+            docker system prune -f >nul 2>&1 || echo No dangling images to remove
             """
         }
     }
