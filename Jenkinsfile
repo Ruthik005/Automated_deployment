@@ -23,8 +23,8 @@ pipeline {
                 REM Stop and remove all running containers safely
                 REM -----------------------------
                 for /F "tokens=*" %%c in ('docker ps -a -q --filter "ancestor=%IMAGE_NAME%" 2^>nul') do (
-                    docker stop %%c >nul 2>&1 || echo No container %%c running
-                    docker rm %%c >nul 2>&1 || echo No container %%c to remove
+                    docker stop %%c >nul 2>&1
+                    docker rm %%c >nul 2>&1
                 )
 
                 REM -----------------------------
@@ -32,7 +32,7 @@ pipeline {
                 REM -----------------------------
                 for /F "tokens=1,2" %%a in ('docker images %IMAGE_NAME% --format "{{.ID}} {{.Tag}}" 2^>nul') do (
                     if NOT "%%b"=="%IMAGE_TAG%" (
-                        docker rmi -f %%a >nul 2>&1 || echo Image %%a not removed
+                        docker rmi -f %%a >nul 2>&1
                     )
                 )
                 """
@@ -61,8 +61,8 @@ pipeline {
             steps {
                 bat """
                 REM Stop & remove existing container safely
-                docker stop %IMAGE_NAME% >nul 2>&1 || echo No running container
-                docker rm %IMAGE_NAME% >nul 2>&1 || echo No container to remove
+                docker stop %IMAGE_NAME% >nul 2>&1
+                docker rm %IMAGE_NAME% >nul 2>&1
 
                 REM Run container on specified port
                 docker run -d -p %APP_PORT%:%APP_PORT% --name %IMAGE_NAME% %IMAGE_NAME%:%IMAGE_TAG%
@@ -139,7 +139,7 @@ pipeline {
             echo "Pipeline finished with status: ${currentBuild.currentResult}"
             bat """
             REM Optional: Clean dangling images silently
-            docker system prune -f >nul 2>&1 || echo No dangling images to remove
+            docker system prune -f >nul 2>&1
             """
         }
     }
