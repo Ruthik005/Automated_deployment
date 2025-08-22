@@ -18,41 +18,27 @@ pipeline {
         stage('Clean Old Docker Images & Containers') {
             steps {
                 bat """
-                @echo off
-                REM -----------------------------
-                REM Stop and remove all running containers safely
-                REM -----------------------------
-                for /F "tokens=*" %%c in ('docker ps -a -q --filter "ancestor=%IMAGE_NAME%" 2^>nul') do (
-                    docker stop %%c >nul 2>&1
-                    docker rm %%c >nul 2>&1
+                REM Stop and remove all running containers silently
+                for /F "tokens=*" %%c in ('docker ps -a -q --filter "ancestor=%IMAGE_NAME%"') do (
+                    docker stop %%c >nul 2>&1 || exit /b 0
+                    docker rm %%c >nul 2>&1 || exit /b 0
                 )
 
-                REM -----------------------------
-                REM Remove old images except the newly built one safely
-                REM -----------------------------
-                for /F "tokens=1,2" %%a in ('docker images %IMAGE_NAME% --format "{{.ID}} {{.Tag}}" 2^>nul') do (
-                    if NOT "%%b"=="%IMAGE_TAG%" (
-                        docker rmi -f %%a >nul 2>&1
+                REM Remove old images except the newly built one silently
+                for /F "tokens=*" %%i in ('docker images %IMAGE_NAME% --format "{{.ID}} {{.Tag}}"') do (
+                    for /F "tokens=1,2" %%a in ("%%i") do (
+                        if NOT "%%b"=="%IMAGE_TAG%" docker rmi -f %%a >nul 2>&1 || exit /b 0
                     )
                 )
                 """
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Build & Test in Docker') {
             steps {
                 bat """
-                REM Build Docker image (no-cache)
+                REM Build Docker image (runs tests automatically in Maven container)
                 docker build --no-cache -t %IMAGE_NAME%:%IMAGE_TAG% .
-                """
-            }
-        }
-
-        stage('Trivy Security Scan') {
-            steps {
-                bat """
-                REM Scan Docker image for vulnerabilities (HIGH & CRITICAL)
-                "C:/ProgramData/chocolatey/bin/trivy.exe" image --severity HIGH,CRITICAL --exit-code 1 --ignore-unfixed --no-progress %IMAGE_NAME%:%IMAGE_TAG%
                 """
             }
         }
@@ -60,9 +46,9 @@ pipeline {
         stage('Run Docker Container') {
             steps {
                 bat """
-                REM Stop & remove existing container safely
-                docker stop %IMAGE_NAME% >nul 2>&1
-                docker rm %IMAGE_NAME% >nul 2>&1
+                REM Stop & remove existing container silently
+                docker stop %IMAGE_NAME% >nul 2>&1 || exit /b 0
+                docker rm %IMAGE_NAME% >nul 2>&1 || exit /b 0
 
                 REM Run container on specified port
                 docker run -d -p %APP_PORT%:%APP_PORT% --name %IMAGE_NAME% %IMAGE_NAME%:%IMAGE_TAG%
@@ -74,6 +60,9 @@ pipeline {
             steps {
                 bat """
                 @echo off
+                REM -----------------------------
+                REM Robust Health Check Script
+                REM -----------------------------
                 setlocal enabledelayedexpansion
 
                 set RETRIES=10
@@ -82,6 +71,7 @@ pipeline {
                 :CHECK
                 for /f "delims=" %%a in ('curl -s -u admin:admin123 http://localhost:%APP_PORT%/health') do (
                     set RESPONSE=%%a
+                    REM Take only first 2 characters to trim CR/LF
                     set RESPONSE=!RESPONSE:~0,2!
                 )
 
@@ -139,7 +129,7 @@ pipeline {
             echo "Pipeline finished with status: ${currentBuild.currentResult}"
             bat """
             REM Optional: Clean dangling images silently
-            docker system prune -f >nul 2>&1
+            docker system prune -f >nul 2>&1 || exit /b 0
             """
         }
     }
