@@ -34,11 +34,20 @@ pipeline {
             }
         }
 
-        stage('Build & Test in Docker') {
+        stage('Build Docker Image') {
             steps {
                 bat """
-                REM Build Docker image (runs tests automatically in Maven container)
+                REM Build Docker image (no-cache)
                 docker build --no-cache -t %IMAGE_NAME%:%IMAGE_TAG% .
+                """
+            }
+        }
+
+        stage('Trivy Security Scan') {
+            steps {
+                bat """
+                REM Scan Docker image for vulnerabilities (HIGH & CRITICAL)
+                trivy image --severity HIGH,CRITICAL --exit-code 1 --ignore-unfixed --no-progress %IMAGE_NAME%:%IMAGE_TAG%
                 """
             }
         }
@@ -71,7 +80,6 @@ pipeline {
                 :CHECK
                 for /f "delims=" %%a in ('curl -s -u admin:admin123 http://localhost:%APP_PORT%/health') do (
                     set RESPONSE=%%a
-                    REM Take only first 2 characters to trim CR/LF
                     set RESPONSE=!RESPONSE:~0,2!
                 )
 
