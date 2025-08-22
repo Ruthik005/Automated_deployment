@@ -18,14 +18,19 @@ pipeline {
         stage('Clean Old Docker Images & Containers') {
             steps {
                 bat """
+                @echo off
+                REM -----------------------------
                 REM Stop and remove all running containers silently
-                for /F "tokens=*" %%c in ('docker ps -a -q --filter "ancestor=%IMAGE_NAME%"') do (
+                REM -----------------------------
+                for /F "tokens=*" %%c in ('docker ps -a -q --filter "ancestor=%IMAGE_NAME%" 2^>nul') do (
                     docker stop %%c >nul 2>&1
                     docker rm %%c >nul 2>&1
                 )
 
+                REM -----------------------------
                 REM Remove old images except the newly built one silently
-                for /F "tokens=1,2" %%a in ('docker images %IMAGE_NAME% --format "%%.ID %%TAG%%"') do (
+                REM -----------------------------
+                for /F "tokens=1,2" %%a in ('docker images %IMAGE_NAME% --format "{{.ID}} {{.Tag}}" 2^>nul') do (
                     if NOT "%%b"=="%IMAGE_TAG%" (
                         docker rmi -f %%a >nul 2>&1
                     )
@@ -37,6 +42,7 @@ pipeline {
         stage('Build & Test in Docker') {
             steps {
                 bat """
+                @echo off
                 REM Build Docker image (runs tests automatically in Maven container)
                 docker build --no-cache -t %IMAGE_NAME%:%IMAGE_TAG% .
                 """
@@ -46,6 +52,7 @@ pipeline {
         stage('Run Docker Container') {
             steps {
                 bat """
+                @echo off
                 REM Stop & remove existing container silently
                 docker stop %IMAGE_NAME% >nul 2>&1
                 docker rm %IMAGE_NAME% >nul 2>&1
@@ -69,7 +76,7 @@ pipeline {
                 set SUCCESS=0
 
                 :CHECK
-                for /f "delims=" %%a in ('curl -s -u admin:admin123 http://localhost:%APP_PORT%/health') do (
+                for /f "delims=" %%a in ('curl -s -u admin:admin123 http://localhost:%APP_PORT%/health 2^>nul') do (
                     set RESPONSE=%%a
                     set RESPONSE=!RESPONSE:~0,2!
                 )
@@ -104,6 +111,7 @@ pipeline {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'docker-hub', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                     bat """
+                    @echo off
                     REM Login to Docker Hub
                     echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin
 
@@ -127,6 +135,7 @@ pipeline {
         always {
             echo "Pipeline finished with status: ${currentBuild.currentResult}"
             bat """
+            @echo off
             REM Optional: Clean dangling images silently
             docker system prune -f >nul 2>&1
             """
