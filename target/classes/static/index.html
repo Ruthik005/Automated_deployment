@@ -6,217 +6,47 @@
     <title>Deployment Status</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height:100vh; padding:20px; }
+        .container { max-width:1200px; margin:0 auto; }
+        .header { text-align:center; color:white; margin-bottom:40px; }
+        .header h1 { font-size:3rem; font-weight:700; margin-bottom:10px; text-shadow:0 4px 8px rgba(0,0,0,0.2); }
+        .header p { font-size:1.2rem; opacity:0.9; }
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        .header {
-            text-align: center;
-            color: white;
-            margin-bottom: 40px;
-        }
-
-        .header h1 {
-            font-size: 3rem;
-            font-weight: 700;
-            margin-bottom: 10px;
-            text-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        }
-
-        .header p {
-            font-size: 1.2rem;
-            opacity: 0.9;
-        }
-
-        .dashboard {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 25px;
-            margin-bottom: 40px;
-        }
-
-        .card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(15px);
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
-        }
-
-        .card-header {
-            display: flex;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .card-icon {
-            width: 50px;
-            height: 50px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 15px;
-            font-size: 20px;
-            color: white;
-        }
-
+        .dashboard { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:25px; margin-bottom:40px; }
+        .card { background:rgba(255,255,255,0.95); backdrop-filter:blur(15px); border-radius:20px; padding:30px; box-shadow:0 20px 40px rgba(0,0,0,0.1); border:1px solid rgba(255,255,255,0.3); transition: transform 0.3s ease, box-shadow 0.3s ease; }
+        .card:hover { transform: translateY(-5px); box-shadow:0 25px 50px rgba(0,0,0,0.15); }
+        .card-header { display:flex; align-items:center; margin-bottom:20px; }
+        .card-icon { width:50px; height:50px; border-radius:12px; display:flex; align-items:center; justify-content:center; margin-right:15px; font-size:20px; color:white; }
         .success { background: linear-gradient(45deg, #10b981, #059669); }
         .warning { background: linear-gradient(45deg, #f59e0b, #d97706); }
         .info { background: linear-gradient(45deg, #3b82f6, #2563eb); }
         .danger { background: linear-gradient(45deg, #ef4444, #dc2626); }
 
-        .card h3 {
-            color: #333;
-            font-size: 1.3rem;
-            font-weight: 600;
+        .card h3 { color:#333; font-size:1.3rem; font-weight:600; }
+        .status-value { font-size:2rem; font-weight:700; margin:15px 0; }
+        .status-description { color:#666; font-size:0.9rem; line-height:1.5; }
+        .metrics { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:15px; margin-top:20px; }
+        .metric { text-align:center; padding:15px; background:#f8fafc; border-radius:10px; }
+        .metric-value { font-size:1.5rem; font-weight:700; color:#333; }
+        .metric-label { font-size:0.8rem; color:#666; margin-top:5px; }
+
+        .logs { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(15px); border-radius: 20px; padding: 30px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1); }
+        .logs h3 { color: #333; margin-bottom: 20px; display:flex; align-items:center; }
+        .logs h3 i { margin-right:10px; color:#667eea; }
+        pre { white-space: pre-wrap; word-wrap: break-word; }
+
+        .logout-btn { position:fixed; top:20px; right:20px; background:rgba(255,255,255,0.2); color:white; border:none; padding:12px 20px; border-radius:25px; cursor:pointer; font-weight:600; transition: all 0.3s ease; backdrop-filter: blur(10px); }
+        .logout-btn:hover { background:rgba(255,255,255,0.3); transform:translateY(-2px); }
+
+        @media (max-width:768px) {
+            .header h1 { font-size:2rem; }
+            .dashboard { grid-template-columns:1fr; }
+            .logout-btn { position:relative; width:100%; margin-bottom:20px; }
         }
 
-        .status-value {
-            font-size: 2rem;
-            font-weight: 700;
-            margin: 15px 0;
-        }
-
-        .status-description {
-            color: #666;
-            font-size: 0.9rem;
-            line-height: 1.5;
-        }
-
-        .metrics {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-            gap: 15px;
-            margin-top: 20px;
-        }
-
-        .metric {
-            text-align: center;
-            padding: 15px;
-            background: #f8fafc;
-            border-radius: 10px;
-        }
-
-        .metric-value {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #333;
-        }
-
-        .metric-label {
-            font-size: 0.8rem;
-            color: #666;
-            margin-top: 5px;
-        }
-
-        .logs {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(15px);
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-        }
-
-        .logs h3 {
-            color: #333;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-        }
-
-        .logs h3 i {
-            margin-right: 10px;
-            color: #667eea;
-        }
-
-        .log-entry {
-            display: flex;
-            align-items: center;
-            padding: 12px;
-            margin-bottom: 8px;
-            background: #f8fafc;
-            border-radius: 8px;
-            border-left: 4px solid #10b981;
-        }
-
-        .log-time {
-            color: #666;
-            font-size: 0.85rem;
-            margin-right: 15px;
-            min-width: 80px;
-        }
-
-        .log-message {
-            flex: 1;
-            color: #333;
-        }
-
-        .logout-btn {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 25px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            backdrop-filter: blur(10px);
-        }
-
-        .logout-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
-            transform: translateY(-2px);
-        }
-
-        @media (max-width: 768px) {
-            .header h1 {
-                font-size: 2rem;
-            }
-            
-            .dashboard {
-                grid-template-columns: 1fr;
-            }
-            
-            .logout-btn {
-                position: relative;
-                width: 100%;
-                margin-bottom: 20px;
-            }
-        }
-
-        .pulse {
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.7; }
-            100% { opacity: 1; }
+        .pulse { animation:pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity:1; } 50% { opacity:0.7; } 100% { opacity:1; }
         }
     </style>
 </head>
@@ -234,145 +64,114 @@
         <div class="dashboard">
             <div class="card">
                 <div class="card-header">
-                    <div class="card-icon success">
-                        <i class="fas fa-server"></i>
-                    </div>
+                    <div class="card-icon success"><i class="fas fa-server"></i></div>
                     <h3>Spring Boot Application</h3>
                 </div>
                 <div class="status-value success pulse">RUNNING</div>
-                <div class="status-description">
-                    Application is healthy and processing requests successfully.
-                </div>
+                <div class="status-description">Application is healthy and processing requests successfully.</div>
                 <div class="metrics">
-                    <div class="metric">
-                        <div class="metric-value">99.9%</div>
-                        <div class="metric-label">Uptime</div>
-                    </div>
-                    <div class="metric">
-                        <div class="metric-value">8081</div>
-                        <div class="metric-label">Port</div>
-                    </div>
+                    <div class="metric"><div class="metric-value">99.9%</div><div class="metric-label">Uptime</div></div>
+                    <div class="metric"><div class="metric-value">8081</div><div class="metric-label">Port</div></div>
                 </div>
             </div>
 
             <div class="card">
                 <div class="card-header">
-                    <div class="card-icon info">
-                        <i class="fas fa-database"></i>
-                    </div>
+                    <div class="card-icon info"><i class="fas fa-database"></i></div>
                     <h3>System Health</h3>
                 </div>
                 <div class="status-value info">HEALTHY</div>
-                <div class="status-description">
-                    All system components are functioning normally.
-                </div>
+                <div class="status-description">All system components are functioning normally.</div>
                 <div class="metrics">
-                    <div class="metric">
-                        <div class="metric-value">45%</div>
-                        <div class="metric-label">CPU</div>
-                    </div>
-                    <div class="metric">
-                        <div class="metric-value">1.2GB</div>
-                        <div class="metric-label">Memory</div>
-                    </div>
+                    <div class="metric"><div class="metric-value">45%</div><div class="metric-label">CPU</div></div>
+                    <div class="metric"><div class="metric-value">1.2GB</div><div class="metric-label">Memory</div></div>
                 </div>
             </div>
 
             <div class="card">
                 <div class="card-header">
-                    <div class="card-icon success">
-                        <i class="fas fa-cloud"></i>
-                    </div>
+                    <div class="card-icon success"><i class="fas fa-cloud"></i></div>
                     <h3>Deployment Status</h3>
                 </div>
-                <div class="status-value success">DEPLOYED</div>
-                <div class="status-description">
-                    Latest version successfully deployed and active.
-                </div>
+                <div class="status-value success" id="deployStatus">DEPLOYED</div>
+                <div class="status-description">Latest version successfully deployed and active.</div>
                 <div class="metrics">
-                    <div class="metric">
-                        <div class="metric-value">v1.0</div>
-                        <div class="metric-label">Version</div>
-                    </div>
-                    <div class="metric">
-                        <div class="metric-value">2min</div>
-                        <div class="metric-label">Deploy Time</div>
-                    </div>
+                    <div class="metric"><div class="metric-value" id="deployVersion">v1.0</div><div class="metric-label">Version</div></div>
+                    <div class="metric"><div class="metric-value" id="deployTime">2min</div><div class="metric-label">Deploy Time</div></div>
                 </div>
             </div>
 
             <div class="card">
                 <div class="card-header">
-                    <div class="card-icon warning">
-                        <i class="fas fa-cogs"></i>
-                    </div>
+                    <div class="card-icon warning"><i class="fas fa-cogs"></i></div>
                     <h3>CI/CD Pipeline</h3>
                 </div>
                 <div class="status-value warning">MONITORING</div>
-                <div class="status-description">
-                    Continuous integration pipeline is actively monitoring for changes.
-                </div>
+                <div class="status-description">Continuous integration pipeline is actively monitoring for changes.</div>
                 <div class="metrics">
-                    <div class="metric">
-                        <div class="metric-value">Jenkins</div>
-                        <div class="metric-label">Tool</div>
-                    </div>
-                    <div class="metric">
-                        <div class="metric-value">8080</div>
-                        <div class="metric-label">Port</div>
-                    </div>
+                    <div class="metric"><div class="metric-value">Jenkins</div><div class="metric-label">Tool</div></div>
+                    <div class="metric"><div class="metric-value">8080</div><div class="metric-label">Port</div></div>
                 </div>
             </div>
         </div>
 
         <div class="logs">
-            <h3>
-                <i class="fas fa-list"></i>
-                Recent Deployment Logs
-            </h3>
-            <div class="log-entry">
-                <div class="log-time">08:03:16</div>
-                <div class="log-message">✅ Spring Boot application started successfully</div>
-            </div>
-            <div class="log-entry">
-                <div class="log-time">08:03:15</div>
-                <div class="log-message">🔧 Tomcat initialized with port 8081</div>
-            </div>
-            <div class="log-entry">
-                <div class="log-time">08:03:14</div>
-                <div class="log-message">🚀 Application startup initiated</div>
-            </div>
-            <div class="log-entry">
-                <div class="log-time">08:02:45</div>
-                <div class="log-message">📦 Maven build completed successfully</div>
-            </div>
+            <h3><i class="fas fa-list"></i> Recent Deployment Logs</h3>
+            <pre id="jenkinsLogs"></pre>
         </div>
     </div>
 
     <script>
-        // Update time every second
-        function updateTime() {
-            const now = new Date();
-            const timeString = now.toLocaleTimeString();
-            document.title = `Deployment Status - ${timeString}`;
-        }
+      const JOB_NAME = ""; // leave empty to use backend default job
+      const REFRESH_MS = 8000;
 
-        setInterval(updateTime, 1000);
+      function lastNLines(text, n) {
+          const arr = text.split("\n");
+          const start = arr.length - n;
+          return arr.slice(start > 0 ? start : 0).join("\n");
+      }
 
-        // Simulate real-time updates
-        function updateMetrics() {
-            const cpuElement = document.querySelector('.metric-value');
-            if (cpuElement && cpuElement.textContent.includes('%')) {
-                const currentCPU = parseInt(cpuElement.textContent);
-                const newCPU = Math.max(20, Math.min(80, currentCPU + (Math.random() - 0.5) * 10));
-                cpuElement.textContent = Math.round(newCPU) + '%';
-            }
-        }
+      async function loadJenkinsStatus() {
+          try {
+              let url = "/api/jenkins/status";
+              if (JOB_NAME) url += "?job=" + encodeURIComponent(JOB_NAME);
+              const resp = await fetch(url);
+              if (!resp.ok) return;
+              const status = await resp.json();
+              const statusEl = document.getElementById("deployStatus");
+              if (statusEl) statusEl.textContent = status.building ? "BUILDING" : (status.result || "UNKNOWN");
+              const verEl = document.getElementById("deployVersion");
+              if (verEl && status.number) verEl.textContent = "v" + status.number;
+              const timeEl = document.getElementById("deployTime");
+              if (timeEl && status.timestamp) timeEl.textContent = new Date(status.timestamp).toLocaleString();
+          } catch(e) {}
+      }
 
-        setInterval(updateMetrics, 5000);
+      async function loadJenkinsLogs() {
+          try {
+              let url = "/api/jenkins/console";
+              if (JOB_NAME) url += "?job=" + encodeURIComponent(JOB_NAME);
+              const resp = await fetch(url);
+              if (!resp.ok) return;
+              const text = await resp.text();
+              const logsEl = document.getElementById("jenkinsLogs");
+              if (logsEl) {
+                  logsEl.textContent = lastNLines(text, 300);
+                  logsEl.scrollTop = logsEl.scrollHeight;
+              }
+          } catch(e) {}
+      }
 
-        console.log('🚀 DevOps Dashboard Loaded Successfully!');
-        console.log('📊 System Status: All components operational');
+      function startAutoRefresh() {
+          loadJenkinsStatus();
+          loadJenkinsLogs();
+          setInterval(loadJenkinsStatus, REFRESH_MS);
+          setInterval(loadJenkinsLogs, REFRESH_MS);
+      }
+
+      if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", startAutoRefresh);
+      } else { startAutoRefresh(); }
     </script>
 </body>
 </html>
