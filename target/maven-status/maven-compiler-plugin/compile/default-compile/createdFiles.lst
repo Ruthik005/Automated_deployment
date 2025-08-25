@@ -1,4 +1,4 @@
 com\example\Application.class
-com\example\login\HomeController.class
 com\example\login\LoginService.class
+com\example\login\HomeController.class
 com\example\login\SecurityConfig.class
