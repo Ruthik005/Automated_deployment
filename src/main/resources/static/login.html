@@ -1,9 +1,11 @@
-<!DOCTYPE html>
+.features {
+                grid-template-columns: 1fr;
+            }<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login Page</title>
+    <title>Login Page - DevOps Deployment System</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         * {
@@ -12,127 +14,307 @@
             box-sizing: border-box;
         }
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        :root {
+            --primary-dark: #0a0e1a;
+            --secondary-dark: #1a1f2e;
+            --accent-blue: #3b82f6;
+            --accent-hover: #2563eb;
+            --success-color: #10b981;
+            --text-light: #ffffff;
+            --text-secondary: #94a3b8;
+            --glass-bg: rgba(26, 31, 46, 0.85);
         }
 
-        .background-effects {
+        body {
+            font-family: 'Inter', 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 25%, #334155 50%, #475569 75%, #64748b 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        .animated-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(16, 185, 129, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(245, 158, 11, 0.1) 0%, transparent 50%);
+        }
+
+        .grid-overlay {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
             z-index: -1;
-            overflow: hidden;
+            background-image: 
+                linear-gradient(rgba(59, 130, 246, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(59, 130, 246, 0.1) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: gridMove 20s linear infinite;
         }
 
-        .floating-shape {
+        @keyframes gridMove {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(50px, 50px); }
+        }
+
+        .floating-particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .particle {
             position: absolute;
-            opacity: 0.1;
-            animation: float 8s ease-in-out infinite;
-        }
-
-        .floating-shape:nth-child(1) {
-            top: 20%;
-            left: 10%;
-            width: 100px;
-            height: 100px;
-            background: white;
+            width: 4px;
+            height: 4px;
+            background: var(--accent-blue);
             border-radius: 50%;
-            animation-delay: 0s;
+            animation: float 15s linear infinite;
+            opacity: 0.6;
         }
 
-        .floating-shape:nth-child(2) {
-            top: 60%;
-            right: 15%;
-            width: 80px;
-            height: 80px;
-            background: white;
-            border-radius: 20px;
-            animation-delay: 3s;
-        }
-
-        .floating-shape:nth-child(3) {
-            bottom: 30%;
-            left: 20%;
-            width: 60px;
-            height: 60px;
-            background: white;
-            border-radius: 50%;
-            animation-delay: 6s;
+        .particle:nth-child(odd) {
+            background: var(--success-color);
+            animation-duration: 20s;
         }
 
         @keyframes float {
-            0%, 100% { transform: translateY(0px) rotate(0deg); }
-            33% { transform: translateY(-20px) rotate(120deg); }
-            66% { transform: translateY(10px) rotate(240deg); }
+            0% {
+                transform: translateY(100vh) scale(0);
+                opacity: 0;
+            }
+            10% {
+                opacity: 0.6;
+            }
+            90% {
+                opacity: 0.6;
+            }
+            100% {
+                transform: translateY(-100px) scale(1);
+                opacity: 0;
+            }
+        }
+
+        /* Header Border */
+        .header-border {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 80px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 32px;
+            z-index: 100;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .project-title {
+            color: var(--text-light);
+            font-size: 18px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .project-meta {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .batch-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--accent-blue);
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid var(--success-color);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            color: var(--success-color);
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--success-color);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.7; }
+        }
+
+        /* Footer Border */
+        .footer-border {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 60px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border-top: 2px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .footer-text {
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 500;
+            text-align: center;
+        }
+
+        /* Main Content Area */
+        .main-content {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 100px 20px 80px;
         }
 
         .login-container {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(15px);
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            padding: 40px;
-            width: 400px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            box-shadow: 
+                0 25px 50px -12px rgba(0, 0, 0, 0.25),
+                0 0 0 1px rgba(59, 130, 246, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            padding: 32px;
+            width: 380px;
             max-width: 90vw;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            animation: slideUp 0.6s ease-out;
+            position: relative;
+            overflow: hidden;
+            animation: slideUp 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .login-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--accent-blue), transparent);
         }
 
         @keyframes slideUp {
             from {
                 opacity: 0;
-                transform: translateY(50px);
+                transform: translateY(60px) scale(0.95);
             }
             to {
                 opacity: 1;
-                transform: translateY(0);
+                transform: translateY(0) scale(1);
             }
         }
 
         .header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 32px;
+        }
+
+        .logo-container {
+            position: relative;
+            display: inline-block;
+            margin-bottom: 20px;
         }
 
         .logo-icon {
             width: 70px;
             height: 70px;
-            background: linear-gradient(45deg, #667eea, #764ba2);
-            border-radius: 15px;
+            background: linear-gradient(135deg, var(--accent-blue) 0%, var(--success-color) 100%);
+            border-radius: 18px;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 20px;
-            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+            margin: 0 auto;
+            box-shadow: 
+                0 20px 40px rgba(59, 130, 246, 0.3),
+                0 0 0 4px rgba(59, 130, 246, 0.1);
+            position: relative;
+            animation: logoFloat 6s ease-in-out infinite;
+        }
+
+        @keyframes logoFloat {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+        }
+
+        .logo-icon::after {
+            content: '';
+            position: absolute;
+            top: -4px;
+            left: -4px;
+            right: -4px;
+            bottom: -4px;
+            background: linear-gradient(45deg, var(--accent-blue), var(--success-color));
+            border-radius: 22px;
+            z-index: -1;
+            opacity: 0.7;
+            filter: blur(8px);
         }
 
         .logo-icon i {
             color: white;
-            font-size: 30px;
+            font-size: 32px;
+            z-index: 1;
         }
 
         h2 {
-            color: #333;
+            color: var(--text-light);
             font-size: 32px;
-            font-weight: 700;
+            font-weight: 800;
             margin-bottom: 8px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
         }
 
         .subtitle {
-            color: #666;
+            color: var(--text-secondary);
             font-size: 16px;
-            font-weight: 400;
+            font-weight: 500;
         }
 
         form {
-            margin-top: 20px;
+            margin-top: 24px;
         }
 
         .form-field {
@@ -142,7 +324,7 @@
 
         label {
             display: block;
-            color: #333;
+            color: var(--text-light);
             font-weight: 600;
             margin-bottom: 10px;
             font-size: 14px;
@@ -152,59 +334,98 @@
 
         .input-container {
             position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.3s ease;
+        }
+
+        .input-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%);
+            border-radius: 16px;
+            z-index: -1;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .input-container:focus-within::before {
+            opacity: 1;
         }
 
         .input-container i {
             position: absolute;
-            left: 18px;
+            left: 20px;
             top: 50%;
             transform: translateY(-50%);
-            color: #667eea;
-            font-size: 18px;
+            color: var(--accent-blue);
+            font-size: 20px;
             z-index: 1;
+            transition: all 0.3s ease;
+        }
+
+        .input-container:focus-within i {
+            color: var(--success-color);
+            transform: translateY(-50%) scale(1.1);
         }
 
         input[type="text"], input[type="password"] {
             width: 100%;
-            padding: 18px 20px 18px 55px;
-            border: 2px solid #e1e8ed;
-            border-radius: 15px;
+            padding: 20px 24px 20px 60px;
+            border: 2px solid rgba(100, 116, 139, 0.2);
+            border-radius: 16px;
             font-size: 16px;
-            transition: all 0.3s ease;
-            background: #fff;
+            transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+            background: rgba(15, 23, 42, 0.5);
             font-family: inherit;
+            color: var(--text-light);
+            backdrop-filter: blur(10px);
+        }
+
+        input[type="text"]::placeholder, input[type="password"]::placeholder {
+            color: var(--text-secondary);
         }
 
         input[type="text"]:focus, input[type="password"]:focus {
             outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+            border-color: var(--accent-blue);
+            box-shadow: 
+                0 0 0 4px rgba(59, 130, 246, 0.1),
+                0 8px 32px rgba(59, 130, 246, 0.15);
             transform: translateY(-2px);
+            background: rgba(15, 23, 42, 0.8);
         }
 
         input[type="text"]:valid, input[type="password"]:valid {
-            border-color: #10b981;
+            border-color: var(--success-color);
         }
 
         button[type="submit"] {
             width: 100%;
-            padding: 18px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            background: linear-gradient(135deg, var(--accent-blue) 0%, var(--accent-hover) 100%);
             color: white;
             border: none;
-            border-radius: 15px;
+            border-radius: 16px;
             font-size: 18px;
-            font-weight: 600;
+            font-weight: 700;
             cursor: pointer;
-            transition: all 0.3s ease;
-            margin-top: 10px;
+            transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+            margin-top: 16px;
             position: relative;
             overflow: hidden;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         button[type="submit"]:hover {
             transform: translateY(-3px);
-            box-shadow: 0 15px 35px rgba(102, 126, 234, 0.4);
+            box-shadow: 
+                0 20px 40px rgba(59, 130, 246, 0.4),
+                0 0 0 4px rgba(59, 130, 246, 0.1);
         }
 
         button[type="submit"]:active {
@@ -218,8 +439,8 @@
             left: -100%;
             width: 100%;
             height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-            transition: left 0.5s;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.6s cubic-bezier(0.4, 0.0, 0.2, 1);
         }
 
         button[type="submit"]:hover::before {
@@ -227,49 +448,87 @@
         }
 
         .features {
-            display: flex;
-            justify-content: space-around;
-            margin-top: 25px;
-            padding: 20px;
-            background: #f8fafc;
-            border-radius: 12px;
-            border-left: 4px solid #667eea;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-top: 28px;
         }
 
         .feature {
             text-align: center;
-            flex: 1;
+            padding: 20px 12px;
+            border-radius: 12px;
+            background: rgba(15, 23, 42, 0.3);
+            border: 1px solid rgba(59, 130, 246, 0.1);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .feature:hover {
+            transform: translateY(-2px);
+            background: rgba(59, 130, 246, 0.1);
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+
+        .feature:nth-child(2):hover {
+            background: rgba(16, 185, 129, 0.1);
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+
+        .feature:nth-child(3):hover {
+            background: rgba(245, 158, 11, 0.1);
+            border-color: rgba(245, 158, 11, 0.3);
         }
 
         .feature i {
-            color: #10b981;
-            font-size: 16px;
-            margin-bottom: 8px;
+            font-size: 24px;
+            margin-bottom: 12px;
             display: block;
+            transition: all 0.3s ease;
+        }
+
+        .feature:nth-child(1) i { color: var(--accent-blue); }
+        .feature:nth-child(2) i { color: var(--success-color); }
+        .feature:nth-child(3) i { color: #f59e0b; }
+
+        .feature:hover i {
+            transform: scale(1.1);
         }
 
         .feature span {
-            font-size: 12px;
-            color: #666;
-            font-weight: 500;
+            font-size: 14px;
+            color: var(--text-light);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
-        .footer-info {
-            text-align: center;
-            margin-top: 25px;
-            padding-top: 20px;
-            border-top: 1px solid #e1e8ed;
-        }
-
-        .footer-info p {
-            color: #666;
-            font-size: 13px;
-        }
-
-        @media (max-width: 480px) {
+        @media (max-width: 640px) {
+            .header-border {
+                padding: 0 16px;
+                height: 70px;
+            }
+            
+            .project-title {
+                font-size: 14px;
+            }
+            
+            .batch-info {
+                font-size: 12px;
+            }
+            
+            .project-meta {
+                gap: 12px;
+            }
+            
+            .main-content {
+                padding: 90px 16px 70px;
+            }
+            
             .login-container {
-                padding: 30px 25px;
-                margin: 20px;
+                padding: 28px 20px;
+                width: 100%;
             }
             
             h2 {
@@ -277,120 +536,262 @@
             }
 
             .features {
-                flex-direction: column;
-                gap: 15px;
+                grid-template-columns: 1fr;
+            }
+            
+            .footer-border {
+                height: 50px;
+            }
+            
+            .footer-text {
+                font-size: 12px;
             }
         }
 
-        .sparkle {
+        .cyber-lines {
             position: absolute;
-            width: 4px;
-            height: 4px;
-            background: white;
-            border-radius: 50%;
-            animation: sparkle 2s linear infinite;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            opacity: 0.1;
         }
 
-        @keyframes sparkle {
-            0%, 100% { opacity: 0; transform: scale(0); }
-            50% { opacity: 1; transform: scale(1); }
+        .cyber-line {
+            position: absolute;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--accent-blue), transparent);
+            animation: scan 3s linear infinite;
+        }
+
+        .cyber-line:nth-child(1) {
+            top: 20%;
+            width: 100%;
+            animation-delay: 0s;
+        }
+
+        .cyber-line:nth-child(2) {
+            top: 60%;
+            width: 100%;
+            animation-delay: 1s;
+        }
+
+        .cyber-line:nth-child(3) {
+            top: 80%;
+            width: 100%;
+            animation-delay: 2s;
+        }
+
+        @keyframes scan {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
         }
     </style>
 </head>
 <body>
-    <div class="background-effects">
-        <div class="floating-shape"></div>
-        <div class="floating-shape"></div>
-        <div class="floating-shape"></div>
+    <div class="animated-background"></div>
+    <div class="grid-overlay"></div>
+    <div class="floating-particles"></div>
+
+    <!-- Header Border -->
+    <div class="header-border">
+        <div class="project-title">
+            Automated Software Deployment System with Integrated Testing Pipelines
+        </div>
+        <div class="project-meta">
+            <div class="batch-info">
+                <i class="fas fa-layer-group"></i>
+                BATCH #410 | USECASE 01
+            </div>
+            <div class="status-badge">
+                <div class="status-dot"></div>
+                SYSTEM ONLINE
+            </div>
+        </div>
     </div>
 
-    <div class="login-container">
-        <div class="header">
-            <div class="logo-icon">
-                <i class="fas fa-rocket"></i>
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="login-container">
+            <div class="cyber-lines">
+                <div class="cyber-line"></div>
+                <div class="cyber-line"></div>
+                <div class="cyber-line"></div>
             </div>
-            <h2>Login</h2>
-            <p class="subtitle">DevOps Project Deployment Status</p>
-        </div>
 
-        <form method="post" action="/login">
-            <div class="form-field">
-                <label for="username">Username:</label>
-                <div class="input-container">
-                    <i class="fas fa-user"></i>
-                    <input type="text" id="username" name="username" required>
+            <div class="header">
+                <div class="logo-container">
+                    <div class="logo-icon">
+                        <i class="fas fa-code"></i>
+                    </div>
                 </div>
+                <h2>DevOps Portal</h2>
+                <p class="subtitle">Secure Access Gateway</p>
             </div>
 
-            <div class="form-field">
-                <label for="password">Password:</label>
-                <div class="input-container">
-                    <i class="fas fa-lock"></i>
-                    <input type="password" id="password" name="password" required>
+            <form method="post" action="/login">
+                <div class="form-field">
+                    <label for="username">Username</label>
+                    <div class="input-container">
+                        <i class="fas fa-user"></i>
+                        <input type="text" id="username" name="username" placeholder="Enter your username" required>
+                    </div>
                 </div>
-            </div>
 
-            <button type="submit">Login</button>
-        </form>
+                <div class="form-field">
+                    <label for="password">Password</label>
+                    <div class="input-container">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" id="password" name="password" placeholder="Enter your password" required>
+                    </div>
+                </div>
 
-        <div class="features">
-            <div class="feature">
-                <i class="fas fa-server"></i>
-                <span>Live Status</span>
-            </div>
-            <div class="feature">
-                <i class="fas fa-shield-alt"></i>
-                <span>Secure Access</span>
-            </div>
-            <div class="feature">
-                <i class="fas fa-chart-line"></i>
-                <span>Real-time Data</span>
-            </div>
+                <button type="submit">
+                    <i class="fas fa-sign-in-alt" style="margin-right: 8px;"></i>
+                    Access Dashboard
+                </button>
+            </form>
         </div>
+    </div>
 
-        <div class="footer-info">
-            <p>&copy; 2025 DevOps Dashboard - Professional Deployment Monitoring</p>
+    <!-- Footer Border -->
+    <div class="footer-border">
+        <div class="footer-text">
+            &copy; 2025 DevOps Deployment System - Professional CI/CD Platform
         </div>
     </div>
 
     <script>
-        // Add sparkle effects
-        function createSparkle() {
-            const sparkle = document.createElement('div');
-            sparkle.className = 'sparkle';
-            sparkle.style.left = Math.random() * 100 + 'vw';
-            sparkle.style.top = Math.random() * 100 + 'vh';
-            document.body.appendChild(sparkle);
+        // Create floating particles
+        function createParticles() {
+            const particlesContainer = document.querySelector('.floating-particles');
             
-            setTimeout(() => {
-                sparkle.remove();
-            }, 2000);
+            for (let i = 0; i < 50; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + 'vw';
+                particle.style.animationDelay = Math.random() * 15 + 's';
+                particle.style.animationDuration = (15 + Math.random() * 10) + 's';
+                particlesContainer.appendChild(particle);
+            }
         }
 
-        // Create sparkles periodically
-        setInterval(createSparkle, 1500);
-
-        // Add smooth input interactions
+        // Enhanced input interactions
         const inputs = document.querySelectorAll('input');
         inputs.forEach(input => {
             input.addEventListener('focus', function() {
+                this.parentElement.style.transform = 'translateZ(20px)';
                 this.parentElement.parentElement.style.transform = 'scale(1.02)';
-                this.parentElement.parentElement.style.transition = 'transform 0.2s ease';
+                this.parentElement.parentElement.style.transition = 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)';
             });
             
             input.addEventListener('blur', function() {
+                this.parentElement.style.transform = 'translateZ(0)';
                 this.parentElement.parentElement.style.transform = 'scale(1)';
+            });
+
+            // Real-time validation feedback
+            input.addEventListener('input', function() {
+                if (this.value.length > 0) {
+                    this.style.borderColor = 'var(--success-color)';
+                    this.parentElement.querySelector('i').style.color = 'var(--success-color)';
+                } else {
+                    this.style.borderColor = 'rgba(100, 116, 139, 0.2)';
+                    this.parentElement.querySelector('i').style.color = 'var(--accent-blue)';
+                }
             });
         });
 
-        // Button click effect
+        // Enhanced button interactions
         const button = document.querySelector('button[type="submit"]');
-        button.addEventListener('click', function() {
+        button.addEventListener('mouseenter', function() {
+            this.innerHTML = '<i class="fas fa-rocket" style="margin-right: 8px;"></i>Launch Dashboard';
+        });
+
+        button.addEventListener('mouseleave', function() {
+            this.innerHTML = '<i class="fas fa-sign-in-alt" style="margin-right: 8px;"></i>Access Dashboard';
+        });
+
+        button.addEventListener('click', function(e) {
+            // Create ripple effect
+            const ripple = document.createElement('span');
+            const rect = this.getBoundingClientRect();
+            const size = Math.max(rect.width, rect.height);
+            const x = e.clientX - rect.left - size / 2;
+            const y = e.clientY - rect.top - size / 2;
+            
+            ripple.style.width = ripple.style.height = size + 'px';
+            ripple.style.left = x + 'px';
+            ripple.style.top = y + 'px';
+            ripple.style.position = 'absolute';
+            ripple.style.borderRadius = '50%';
+            ripple.style.background = 'rgba(255, 255, 255, 0.3)';
+            ripple.style.transform = 'scale(0)';
+            ripple.style.animation = 'ripple 0.6s linear';
+            ripple.style.pointerEvents = 'none';
+            
+            this.appendChild(ripple);
+            
+            setTimeout(() => {
+                ripple.remove();
+            }, 600);
+            
             this.style.transform = 'scale(0.98)';
             setTimeout(() => {
                 this.style.transform = '';
             }, 150);
         });
+
+        // Feature card interactions
+        const features = document.querySelectorAll('.feature');
+        features.forEach((feature, index) => {
+            feature.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-4px) rotateX(5deg)';
+            });
+            
+            feature.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0) rotateX(0)';
+            });
+        });
+
+        // Initialize particles
+        createParticles();
+
+        // Add CSS animation keyframes dynamically
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes ripple {
+                to {
+                    transform: scale(4);
+                    opacity: 0;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Typing effect for subtitle
+        const subtitle = document.querySelector('.subtitle');
+        const originalText = subtitle.textContent;
+        let currentText = '';
+        let i = 0;
+
+        function typeWriter() {
+            if (i < originalText.length) {
+                currentText += originalText.charAt(i);
+                subtitle.textContent = currentText + '|';
+                i++;
+                setTimeout(typeWriter, 50);
+            } else {
+                subtitle.textContent = originalText;
+            }
+        }
+
+        // Start typing effect after page load
+        setTimeout(() => {
+            subtitle.textContent = '';
+            typeWriter();
+        }, 800);
     </script>
 </body>
 </html>
