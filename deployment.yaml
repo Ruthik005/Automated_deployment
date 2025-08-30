@@ -1,10 +1,9 @@
-# deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: login-ci-demo-deployment
 spec:
-  replicas: 2  # Run 2 copies of our application for availability
+  replicas: 1
   selector:
     matchLabels:
       app: login-ci-demo
@@ -15,7 +14,14 @@ spec:
     spec:
       containers:
       - name: login-ci-demo-container
-        # IMPORTANT: Use your Docker Hub image
         image: ruthik005/capstone_project:latest
         ports:
-        - containerPort: 8081 # The port your Spring Boot app listens on
+        - containerPort: 8081
+        
+        # ** NEW **: Harden the security context for the container
+        securityContext:
+          runAsUser: 1001             # Run as the 'appuser' UID we created
+          runAsGroup: 1001            # Run as the 'appuser' GID we created
+          runAsNonRoot: true          # Enforce running as a non-root user
+          readOnlyRootFilesystem: true  # Make the filesystem read-only
+          allowPrivilegeEscalation: false # Prevent the container from gaining more privileges
