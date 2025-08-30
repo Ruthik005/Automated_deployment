@@ -136,62 +136,66 @@ pipeline {
             }
         }
 
-        // UPDATED STAGE: Fixed to work with Docker Desktop Kubernetes
+        // UPDATED STAGE: Using kubeconfig file credential instead of docker-desktop context
         stage('Deploy and Update on Kubernetes') {
             steps {
-                bat """
-                @echo off
-                echo --- Setting up Docker Desktop Kubernetes context ---
-                kubectl config use-context docker-desktop
-                kubectl config current-context
-                echo Current context set to Docker Desktop
+                withCredentials([file(credentialsId: 'kubeconfig-file', variable: 'KUBECONFIG')]) {
+                    bat """
+                    @echo off
+                    echo --- Using kubeconfig file credential ---
+                    set KUBECONFIG=%KUBECONFIG%
+                    echo KUBECONFIG set to: %KUBECONFIG%
 
-                echo --- Testing kubectl connection ---
-                kubectl cluster-info
+                    echo --- Testing kubectl connection ---
+                    kubectl config current-context
+                    kubectl cluster-info
 
-                echo --- Applying configurations to ensure deployment exists ---
-                kubectl apply -f deployment.yaml --validate=false
-                if %ERRORLEVEL% NEQ 0 (
-                    echo Failed to apply deployment.yaml!
-                    exit /b 1
-                )
-                kubectl apply -f service.yaml --validate=false
-                if %ERRORLEVEL% NEQ 0 (
-                    echo Failed to apply service.yaml!
-                    exit /b 1
-                )
+                    echo --- Applying configurations to ensure deployment exists ---
+                    kubectl apply -f deployment.yaml --validate=false
+                    if %ERRORLEVEL% NEQ 0 (
+                        echo Failed to apply deployment.yaml!
+                        exit /b 1
+                    )
+                    kubectl apply -f service.yaml --validate=false
+                    if %ERRORLEVEL% NEQ 0 (
+                        echo Failed to apply service.yaml!
+                        exit /b 1
+                    )
 
-                echo --- Triggering rolling update of pods with the new image ---
-                kubectl set image deployment/${KUBE_DEPLOYMENT_NAME} login-ci-demo-container=${DOCKER_HUB_REPO}:${IMAGE_TAG}
-                if %ERRORLEVEL% NEQ 0 (
-                    echo Failed to set the new image on the deployment!
-                    exit /b 1
-                )
-                echo --- Rolling update initiated successfully ---
-                """
+                    echo --- Triggering rolling update of pods with the new image ---
+                    kubectl set image deployment/${KUBE_DEPLOYMENT_NAME} login-ci-demo-container=${DOCKER_HUB_REPO}:${IMAGE_TAG}
+                    if %ERRORLEVEL% NEQ 0 (
+                        echo Failed to set the new image on the deployment!
+                        exit /b 1
+                    )
+                    echo --- Rolling update initiated successfully ---
+                    """
+                }
             }
         }
         
-        // UPDATED STAGE: Fixed to work with Docker Desktop Kubernetes
+        // UPDATED STAGE: Using kubeconfig file credential instead of docker-desktop context
         stage('Verify Kubernetes Deployment') {
             steps {
-                bat """
-                @echo off
-                echo --- Using Docker Desktop Kubernetes context ---
-                kubectl config use-context docker-desktop
+                withCredentials([file(credentialsId: 'kubeconfig-file', variable: 'KUBECONFIG')]) {
+                    bat """
+                    @echo off
+                    echo --- Using kubeconfig file credential ---
+                    set KUBECONFIG=%KUBECONFIG%
 
-                echo --- Verifying deployment rollout status ---
-                kubectl rollout status deployment/${KUBE_DEPLOYMENT_NAME} --timeout=2m
-                if %ERRORLEVEL% NEQ 0 (
-                    echo.
-                    echo ******************************************************
-                    echo * DEPLOYMENT VERIFICATION FAILED                   *
-                    echo * The application did not deploy successfully.     *
-                    echo ******************************************************
-                    exit /b 1
-                )
-                echo --- Deployment successfully verified ---
-                """
+                    echo --- Verifying deployment rollout status ---
+                    kubectl rollout status deployment/${KUBE_DEPLOYMENT_NAME} --timeout=2m
+                    if %ERRORLEVEL% NEQ 0 (
+                        echo.
+                        echo ******************************************************
+                        echo * DEPLOYMENT VERIFICATION FAILED                   *
+                        echo * The application did not deploy successfully.     *
+                        echo ******************************************************
+                        exit /b 1
+                    )
+                    echo --- Deployment successfully verified ---
+                    """
+                }
             }
         }
     }
@@ -207,35 +211,39 @@ pipeline {
             """
         }
         success {
-            // UPDATED BLOCK: Fixed to work with Docker Desktop Kubernetes
-            bat """
-            @echo off
-            echo --- Using Docker Desktop Kubernetes context ---
-            kubectl config use-context docker-desktop
+            // UPDATED BLOCK: Using kubeconfig file credential instead of docker-desktop context
+            withCredentials([file(credentialsId: 'kubeconfig-file', variable: 'KUBECONFIG')]) {
+                bat """
+                @echo off
+                echo --- Using kubeconfig file credential ---
+                set KUBECONFIG=%KUBECONFIG%
 
-            echo --- Final Kubernetes Status ---
-            kubectl get deployments
-            kubectl get pods -o wide
-            kubectl get services
-            """
+                echo --- Final Kubernetes Status ---
+                kubectl get deployments
+                kubectl get pods -o wide
+                kubectl get services
+                """
+            }
         }
         failure {
-            // UPDATED BLOCK: Fixed to work with Docker Desktop Kubernetes  
-            bat """
-            @echo off
-            echo --- Using Docker Desktop Kubernetes context ---
-            kubectl config use-context docker-desktop
+            // UPDATED BLOCK: Using kubeconfig file credential instead of docker-desktop context
+            withCredentials([file(credentialsId: 'kubeconfig-file', variable: 'KUBECONFIG')]) {
+                bat """
+                @echo off
+                echo --- Using kubeconfig file credential ---
+                set KUBECONFIG=%KUBECONFIG%
 
-            echo === Docker Images on Agent ===
-            docker images
-            echo.
-            echo === K8s Deployment Status ===
-            kubectl get deployment ${KUBE_DEPLOYMENT_NAME} -o yaml
-            echo.
-            echo === K8s Pods Status ^& Logs ===
-            kubectl describe pods -l app=login-ci-demo
-            kubectl logs -l app=login-ci-demo --tail=100
-            """
+                echo === Docker Images on Agent ===
+                docker images
+                echo.
+                echo === K8s Deployment Status ===
+                kubectl get deployment ${KUBE_DEPLOYMENT_NAME} -o yaml
+                echo.
+                echo === K8s Pods Status ^& Logs ===
+                kubectl describe pods -l app=login-ci-demo
+                kubectl logs -l app=login-ci-demo --tail=100
+                """
+            }
         }
     }
 }
