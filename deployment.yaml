@@ -2,8 +2,10 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: login-ci-demo-deployment
+  labels:
+    app: login-ci-demo
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: login-ci-demo
@@ -12,19 +14,75 @@ spec:
       labels:
         app: login-ci-demo
     spec:
-      securityContext:
-        runAsNonRoot: true
-      # ** NEW **: Tells this Pod how to pull private images from Docker Hub
-      imagePullSecrets:
-      - name: regcred
       containers:
       - name: login-ci-demo-container
-        image: ruthik005/capstone_project:latest # This will now be pulled using the 'regcred' secret
+        image: ruthik005/capstone_project:latest
         ports:
         - containerPort: 8081
-        securityContext:
-          runAsUser: 1001
-          runAsGroup: 1001
-          readOnlyRootFilesystem: true
-          allowPrivilegeEscalation: false
+        volumeMounts:
+        - name: tmp-volume
+          mountPath: /tmp/spring-tmp  # This is the writable directory inside the container
+        env:
+        - name: SERVER_PORT
+          value: "8081"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8081
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8081
+          initialDelaySeconds: 30
+          periodSeconds: 10
+      volumes:
+      - name: tmp-volume
+        emptyDir: {}
 
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: login-ci-demo-service
+  labels:
+    app: login-ci-demo
+spec:
+  type: NodePort
+  selector:
+    app: login-ci-demo
+  ports:
+    - protocol: TCP
+      port: 8081          # Internal cluster port
+      targetPort: 8081    # Container port (matches your Dockerfile EXPOSE)
+      nodePort: 30081     # External access port (you'll access via this)
+
+---
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: login-ci-demo-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - host: login-demo.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: login-ci-demo-service
+            port:
+              number: 8081
