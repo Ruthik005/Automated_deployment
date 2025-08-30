@@ -136,36 +136,36 @@ pipeline {
             }
         }
 
-        // *** UPDATED STAGE: Using kubeconfig file for authentication ***
+        // *** UPDATED STAGE: Using the official Kubernetes plugin for authentication ***
         stage('Deploy and Update on Kubernetes') {
             steps {
-                withCredentials([file(credentialsId: 'kubeconfig-file', variable: 'KUBECONFIG_FILE')]) {
-                    bat '''
+                withKubeConfig([credentialsId: 'kubeconfig-file']) {
+                    bat """
                     @echo off
                     echo --- Applying configurations to ensure deployment exists ---
-                    kubectl --kubeconfig="%KUBECONFIG_FILE%" apply -f deployment.yaml
-                    kubectl --kubeconfig="%KUBECONFIG_FILE%" apply -f service.yaml
+                    kubectl apply -f deployment.yaml
+                    kubectl apply -f service.yaml
 
                     echo --- Triggering rolling update of pods with the new image ---
-                    kubectl --kubeconfig="%KUBECONFIG_FILE%" set image deployment/%KUBE_DEPLOYMENT_NAME% login-ci-demo-container=%DOCKER_HUB_REPO%:%IMAGE_TAG%
+                    kubectl set image deployment/${KUBE_DEPLOYMENT_NAME} login-ci-demo-container=${DOCKER_HUB_REPO}:${IMAGE_TAG}
                     if %ERRORLEVEL% NEQ 0 (
                         echo Failed to set the new image on the deployment!
                         exit /b 1
                     )
                     echo --- Rolling update initiated successfully ---
-                    '''
+                    """
                 }
             }
         }
         
-        // *** UPDATED STAGE: Using kubeconfig file for authentication ***
+        // *** UPDATED STAGE: Using the official Kubernetes plugin for authentication ***
         stage('Verify Kubernetes Deployment') {
             steps {
-                withCredentials([file(credentialsId: 'kubeconfig-file', variable: 'KUBECONFIG_FILE')]) {
-                    bat '''
+                withKubeConfig([credentialsId: 'kubeconfig-file']) {
+                    bat """
                     @echo off
                     echo --- Verifying deployment rollout status ---
-                    kubectl --kubeconfig="%KUBECONFIG_FILE%" rollout status deployment/%KUBE_DEPLOYMENT_NAME% --timeout=2m
+                    kubectl rollout status deployment/${KUBE_DEPLOYMENT_NAME} --timeout=2m
                     if %ERRORLEVEL% NEQ 0 (
                         echo.
                         echo ******************************************************
@@ -175,7 +175,7 @@ pipeline {
                         exit /b 1
                     )
                     echo --- Deployment successfully verified ---
-                    '''
+                    """
                 }
             }
         }
@@ -192,32 +192,32 @@ pipeline {
             """
         }
         success {
-            // *** UPDATED BLOCK: Using kubeconfig file for successful status check ***
-            withCredentials([file(credentialsId: 'kubeconfig-file', variable: 'KUBECONFIG_FILE')]) {
-                bat '''
+            // *** UPDATED BLOCK: Using the plugin for successful status check ***
+            withKubeConfig([credentialsId: 'kubeconfig-file']) {
+                bat """
                 @echo off
                 echo --- Final Kubernetes Status ---
-                kubectl --kubeconfig="%KUBECONFIG_FILE%" get deployments
-                kubectl --kubeconfig="%KUBECONFIG_FILE%" get pods -o wide
-                kubectl --kubeconfig="%KUBECONFIG_FILE%" get services
-                '''
+                kubectl get deployments
+                kubectl get pods -o wide
+                kubectl get services
+                """
             }
         }
         failure {
-            // *** UPDATED BLOCK: Using kubeconfig file for easier debugging on failure ***
-            withCredentials([file(credentialsId: 'kubeconfig-file', variable: 'KUBECONFIG_FILE')]) {
-                bat '''
+            // *** UPDATED BLOCK: Using the plugin for easier debugging on failure ***
+            withKubeConfig([credentialsId: 'kubeconfig-file']) {
+                bat """
                 @echo off
                 echo === Docker Images on Agent ===
                 docker images
                 echo.
                 echo === K8s Deployment Status ===
-                kubectl --kubeconfig="%KUBECONFIG_FILE%" get deployment %KUBE_DEPLOYMENT_NAME% -o yaml
+                kubectl get deployment ${KUBE_DEPLOYMENT_NAME} -o yaml
                 echo.
                 echo === K8s Pods Status & Logs ===
-                kubectl --kubeconfig="%KUBECONFIG_FILE%" describe pods -l app=login-ci-demo
-                kubectl --kubeconfig="%KUBECONFIG_FILE%" logs -l app=login-ci-demo --tail=100
-                '''
+                kubectl describe pods -l app=login-ci-demo
+                kubectl logs -l app=login-ci-demo --tail=100
+                """
             }
         }
     }
