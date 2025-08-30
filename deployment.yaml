@@ -14,6 +14,9 @@ spec:
       labels:
         app: login-ci-demo
     spec:
+      # ** ADDED **: Harden the security context for the entire Pod
+      securityContext:
+        runAsNonRoot: true
       containers:
       - name: login-ci-demo-container
         image: ruthik005/capstone_project:latest
@@ -21,7 +24,7 @@ spec:
         - containerPort: 8081
         volumeMounts:
         - name: tmp-volume
-          mountPath: /tmp/spring-tmp  # This is the writable directory inside the container
+          mountPath: /tmp  # CORRECTED: Standard path for Spring Boot temp files
         env:
         - name: SERVER_PORT
           value: "8081"
@@ -44,11 +47,20 @@ spec:
             port: 8081
           initialDelaySeconds: 30
           periodSeconds: 10
+        # ** ADDED **: Harden the security context for the individual container
+        securityContext:
+          runAsUser: 1001             # Run as the 'appuser' UID
+          runAsGroup: 1001            # Run as the 'appuser' GID
+          readOnlyRootFilesystem: true  # Make the main filesystem read-only
+          allowPrivilegeEscalation: false # Prevent gaining more privileges
+      # ** MOVED & CORRECTED **: Define the writable temporary volume at the pod level
       volumes:
       - name: tmp-volume
         emptyDir: {}
 
 ---
+
+# --- NO CHANGES BELOW THIS LINE ---
 
 apiVersion: v1
 kind: Service
@@ -86,3 +98,4 @@ spec:
             name: login-ci-demo-service
             port:
               number: 8081
+
