@@ -73,6 +73,37 @@ pipeline {
             }
         }
 
+        // =================================================================
+        // NEW STAGE: Security Scan with Trivy
+        // This stage will scan the newly built image and fail the pipeline
+        // if any HIGH or CRITICAL vulnerabilities are found.
+        // =================================================================
+        stage('Security Scan with Trivy') {
+            steps {
+                bat """
+                @echo off
+                echo --- Starting Security Scan ---
+                trivy image --severity CRITICAL,HIGH --exit-code 1 --ignore-unfixed ${IMAGE_NAME}:${IMAGE_TAG}
+                if %ERRORLEVEL% NEQ 0 (
+                    echo.
+                    echo ******************************************************
+                    echo * SECURITY SCAN FAILED                *
+                    echo * High or Critical vulnerabilities were found.    *
+                    echo * Please review the logs above and fix them.      *
+                    echo ******************************************************
+                    echo.
+                    exit /b 1
+                )
+                echo.
+                echo ******************************************************
+                echo * SECURITY SCAN PASSED                *
+                echo * No High or Critical vulnerabilities found.    *
+                echo ******************************************************
+                echo.
+                """
+            }
+        }
+
         stage('Run Docker Container') {
             steps {
                 bat """
