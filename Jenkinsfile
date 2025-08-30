@@ -136,38 +136,42 @@ pipeline {
             }
         }
 
-        // *** UPDATED STAGE: Added withCredentials block and --token flags ***
+        // *** UPDATED STAGE: Using kubeconfig file for authentication ***
         stage('Deploy and Update on Kubernetes') {
             steps {
-                withCredentials([string(credentialsId: 'kubernetes-token', variable: 'KUBE_TOKEN')]) {
-                    bat """
+                withCredentials([file(credentialsId: 'kubeconfig-file', variable: 'KUBECONFIG_FILE')]) {
+                    bat '''
                     @echo off
+                    set KUBECONFIG=%KUBECONFIG_FILE%
+
                     echo --- Applying configurations to ensure deployment exists ---
-                    kubectl --token=%KUBE_TOKEN% apply -f deployment.yaml
-                    kubectl --token=%KUBE_TOKEN% apply -f service.yaml
+                    kubectl apply -f deployment.yaml
+                    kubectl apply -f service.yaml
 
                     echo --- Triggering rolling update of pods with the new image ---
                     REM This command tells Kubernetes to update the deployment with the new image tag for this specific build.
-                    kubectl --token=%KUBE_TOKEN% set image deployment/${KUBE_DEPLOYMENT_NAME} login-ci-demo-container=${DOCKER_HUB_REPO}:${IMAGE_TAG}
+                    kubectl set image deployment/%KUBE_DEPLOYMENT_NAME% login-ci-demo-container=%DOCKER_HUB_REPO%:%IMAGE_TAG%
                     if %ERRORLEVEL% NEQ 0 (
                         echo Failed to set the new image on the deployment!
                         exit /b 1
                     )
                     echo --- Rolling update initiated successfully ---
-                    """
+                    '''
                 }
             }
         }
         
-        // *** UPDATED STAGE: Added withCredentials block and --token flags ***
+        // *** UPDATED STAGE: Using kubeconfig file for authentication ***
         stage('Verify Kubernetes Deployment') {
             steps {
-                withCredentials([string(credentialsId: 'kubernetes-token', variable: 'KUBE_TOKEN')]) {
-                    bat """
+                withCredentials([file(credentialsId: 'kubeconfig-file', variable: 'KUBECONFIG_FILE')]) {
+                    bat '''
                     @echo off
+                    set KUBECONFIG=%KUBECONFIG_FILE%
+
                     echo --- Verifying deployment rollout status ---
                     REM This command waits for the pod updates to complete successfully.
-                    kubectl --token=%KUBE_TOKEN% rollout status deployment/${KUBE_DEPLOYMENT_NAME} --timeout=2m
+                    kubectl rollout status deployment/%KUBE_DEPLOYMENT_NAME% --timeout=2m
                     if %ERRORLEVEL% NEQ 0 (
                         echo.
                         echo ******************************************************
@@ -177,7 +181,7 @@ pipeline {
                         exit /b 1
                     )
                     echo --- Deployment successfully verified ---
-                    """
+                    '''
                 }
             }
         }
@@ -194,32 +198,34 @@ pipeline {
             """
         }
         success {
-            // *** UPDATED BLOCK: Added withCredentials for successful status check ***
-            withCredentials([string(credentialsId: 'kubernetes-token', variable: 'KUBE_TOKEN')]) {
-                bat """
+            // *** UPDATED BLOCK: Using kubeconfig file for successful status check ***
+            withCredentials([file(credentialsId: 'kubeconfig-file', variable: 'KUBECONFIG_FILE')]) {
+                bat '''
                 @echo off
+                set KUBECONFIG=%KUBECONFIG_FILE%
                 echo --- Final Kubernetes Status ---
-                kubectl --token=%KUBE_TOKEN% get deployments
-                kubectl --token=%KUBE_TOKEN% get pods -o wide
-                kubectl --token=%KUBE_TOKEN% get services
-                """
+                kubectl get deployments
+                kubectl get pods -o wide
+                kubectl get services
+                '''
             }
         }
         failure {
-            // *** UPDATED BLOCK: Added withCredentials for easier debugging on failure ***
-            withCredentials([string(credentialsId: 'kubernetes-token', variable: 'KUBE_TOKEN')]) {
-                bat """
+            // *** UPDATED BLOCK: Using kubeconfig file for easier debugging on failure ***
+            withCredentials([file(credentialsId: 'kubeconfig-file', variable: 'KUBECONFIG_FILE')]) {
+                bat '''
                 @echo off
+                set KUBECONFIG=%KUBECONFIG_FILE%
                 echo === Docker Images on Agent ===
                 docker images
                 echo.
                 echo === K8s Deployment Status ===
-                kubectl --token=%KUBE_TOKEN% get deployment ${KUBE_DEPLOYMENT_NAME} -o yaml
+                kubectl get deployment %KUBE_DEPLOYMENT_NAME% -o yaml
                 echo.
                 echo === K8s Pods Status & Logs ===
-                kubectl --token=%KUBE_TOKEN% describe pods -l app=login-ci-demo
-                kubectl --token=%KUBE_TOKEN% logs -l app=login-ci-demo --tail=100
-                """
+                kubectl describe pods -l app=login-ci-demo
+                kubectl logs -l app=login-ci-demo --tail=100
+                '''
             }
         }
     }
