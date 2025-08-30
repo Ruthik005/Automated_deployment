@@ -142,15 +142,12 @@ pipeline {
                 withCredentials([file(credentialsId: 'kubeconfig-file', variable: 'KUBECONFIG_FILE')]) {
                     bat '''
                     @echo off
-                    set KUBECONFIG=%KUBECONFIG_FILE%
-
                     echo --- Applying configurations to ensure deployment exists ---
-                    kubectl apply -f deployment.yaml
-                    kubectl apply -f service.yaml
+                    kubectl --kubeconfig="%KUBECONFIG_FILE%" apply -f deployment.yaml
+                    kubectl --kubeconfig="%KUBECONFIG_FILE%" apply -f service.yaml
 
                     echo --- Triggering rolling update of pods with the new image ---
-                    REM This command tells Kubernetes to update the deployment with the new image tag for this specific build.
-                    kubectl set image deployment/%KUBE_DEPLOYMENT_NAME% login-ci-demo-container=%DOCKER_HUB_REPO%:%IMAGE_TAG%
+                    kubectl --kubeconfig="%KUBECONFIG_FILE%" set image deployment/%KUBE_DEPLOYMENT_NAME% login-ci-demo-container=%DOCKER_HUB_REPO%:%IMAGE_TAG%
                     if %ERRORLEVEL% NEQ 0 (
                         echo Failed to set the new image on the deployment!
                         exit /b 1
@@ -167,11 +164,8 @@ pipeline {
                 withCredentials([file(credentialsId: 'kubeconfig-file', variable: 'KUBECONFIG_FILE')]) {
                     bat '''
                     @echo off
-                    set KUBECONFIG=%KUBECONFIG_FILE%
-
                     echo --- Verifying deployment rollout status ---
-                    REM This command waits for the pod updates to complete successfully.
-                    kubectl rollout status deployment/%KUBE_DEPLOYMENT_NAME% --timeout=2m
+                    kubectl --kubeconfig="%KUBECONFIG_FILE%" rollout status deployment/%KUBE_DEPLOYMENT_NAME% --timeout=2m
                     if %ERRORLEVEL% NEQ 0 (
                         echo.
                         echo ******************************************************
@@ -202,11 +196,10 @@ pipeline {
             withCredentials([file(credentialsId: 'kubeconfig-file', variable: 'KUBECONFIG_FILE')]) {
                 bat '''
                 @echo off
-                set KUBECONFIG=%KUBECONFIG_FILE%
                 echo --- Final Kubernetes Status ---
-                kubectl get deployments
-                kubectl get pods -o wide
-                kubectl get services
+                kubectl --kubeconfig="%KUBECONFIG_FILE%" get deployments
+                kubectl --kubeconfig="%KUBECONFIG_FILE%" get pods -o wide
+                kubectl --kubeconfig="%KUBECONFIG_FILE%" get services
                 '''
             }
         }
@@ -215,16 +208,15 @@ pipeline {
             withCredentials([file(credentialsId: 'kubeconfig-file', variable: 'KUBECONFIG_FILE')]) {
                 bat '''
                 @echo off
-                set KUBECONFIG=%KUBECONFIG_FILE%
                 echo === Docker Images on Agent ===
                 docker images
                 echo.
                 echo === K8s Deployment Status ===
-                kubectl get deployment %KUBE_DEPLOYMENT_NAME% -o yaml
+                kubectl --kubeconfig="%KUBECONFIG_FILE%" get deployment %KUBE_DEPLOYMENT_NAME% -o yaml
                 echo.
                 echo === K8s Pods Status & Logs ===
-                kubectl describe pods -l app=login-ci-demo
-                kubectl logs -l app=login-ci-demo --tail=100
+                kubectl --kubeconfig="%KUBECONFIG_FILE%" describe pods -l app=login-ci-demo
+                kubectl --kubeconfig="%KUBECONFIG_FILE%" logs -l app=login-ci-demo --tail=100
                 '''
             }
         }
