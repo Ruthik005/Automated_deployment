@@ -136,12 +136,21 @@ pipeline {
             }
         }
 
-        // *** UPDATED STAGE: Using the official Kubernetes plugin for authentication ***
+        // *** UPDATED STAGE: Using Secret Text credentials instead of kubeconfig file ***
         stage('Deploy and Update on Kubernetes') {
             steps {
-                withKubeConfig([credentialsId: 'kubeconfig-file']) {
+                withCredentials([
+                    string(credentialsId: 'kube-server-url', variable: 'KUBE_SERVER'),
+                    string(credentialsId: 'kube-jenkins-token', variable: 'KUBE_TOKEN')
+                ]) {
                     bat """
                     @echo off
+                    echo --- Setting up kubectl configuration ---
+                    kubectl config set-cluster kubernetes --server=%KUBE_SERVER% --insecure-skip-tls-verify=true
+                    kubectl config set-credentials jenkins --token=%KUBE_TOKEN%
+                    kubectl config set-context jenkins-context --cluster=kubernetes --user=jenkins
+                    kubectl config use-context jenkins-context
+
                     echo --- Applying configurations to ensure deployment exists ---
                     kubectl apply -f deployment.yaml
                     kubectl apply -f service.yaml
@@ -158,12 +167,21 @@ pipeline {
             }
         }
         
-        // *** UPDATED STAGE: Using the official Kubernetes plugin for authentication ***
+        // *** UPDATED STAGE: Using Secret Text credentials instead of kubeconfig file ***
         stage('Verify Kubernetes Deployment') {
             steps {
-                withKubeConfig([credentialsId: 'kubeconfig-file']) {
+                withCredentials([
+                    string(credentialsId: 'kube-server-url', variable: 'KUBE_SERVER'),
+                    string(credentialsId: 'kube-jenkins-token', variable: 'KUBE_TOKEN')
+                ]) {
                     bat """
                     @echo off
+                    echo --- Setting up kubectl configuration ---
+                    kubectl config set-cluster kubernetes --server=%KUBE_SERVER% --insecure-skip-tls-verify=true
+                    kubectl config set-credentials jenkins --token=%KUBE_TOKEN%
+                    kubectl config set-context jenkins-context --cluster=kubernetes --user=jenkins
+                    kubectl config use-context jenkins-context
+
                     echo --- Verifying deployment rollout status ---
                     kubectl rollout status deployment/${KUBE_DEPLOYMENT_NAME} --timeout=2m
                     if %ERRORLEVEL% NEQ 0 (
@@ -192,10 +210,19 @@ pipeline {
             """
         }
         success {
-            // *** UPDATED BLOCK: Using the plugin for successful status check ***
-            withKubeConfig([credentialsId: 'kubeconfig-file']) {
+            // *** UPDATED BLOCK: Using Secret Text credentials for successful status check ***
+            withCredentials([
+                string(credentialsId: 'kube-server-url', variable: 'KUBE_SERVER'),
+                string(credentialsId: 'kube-jenkins-token', variable: 'KUBE_TOKEN')
+            ]) {
                 bat """
                 @echo off
+                echo --- Setting up kubectl configuration ---
+                kubectl config set-cluster kubernetes --server=%KUBE_SERVER% --insecure-skip-tls-verify=true
+                kubectl config set-credentials jenkins --token=%KUBE_TOKEN%
+                kubectl config set-context jenkins-context --cluster=kubernetes --user=jenkins
+                kubectl config use-context jenkins-context
+
                 echo --- Final Kubernetes Status ---
                 kubectl get deployments
                 kubectl get pods -o wide
@@ -204,17 +231,26 @@ pipeline {
             }
         }
         failure {
-            // *** UPDATED BLOCK: Using the plugin for easier debugging on failure ***
-            withKubeConfig([credentialsId: 'kubeconfig-file']) {
+            // *** UPDATED BLOCK: Using Secret Text credentials for easier debugging on failure ***
+            withCredentials([
+                string(credentialsId: 'kube-server-url', variable: 'KUBE_SERVER'),
+                string(credentialsId: 'kube-jenkins-token', variable: 'KUBE_TOKEN')
+            ]) {
                 bat """
                 @echo off
+                echo --- Setting up kubectl configuration ---
+                kubectl config set-cluster kubernetes --server=%KUBE_SERVER% --insecure-skip-tls-verify=true
+                kubectl config set-credentials jenkins --token=%KUBE_TOKEN%
+                kubectl config set-context jenkins-context --cluster=kubernetes --user=jenkins
+                kubectl config use-context jenkins-context
+
                 echo === Docker Images on Agent ===
                 docker images
                 echo.
                 echo === K8s Deployment Status ===
                 kubectl get deployment ${KUBE_DEPLOYMENT_NAME} -o yaml
                 echo.
-                echo === K8s Pods Status & Logs ===
+                echo === K8s Pods Status ^& Logs ===
                 kubectl describe pods -l app=login-ci-demo
                 kubectl logs -l app=login-ci-demo --tail=100
                 """
@@ -222,4 +258,3 @@ pipeline {
         }
     }
 }
-
