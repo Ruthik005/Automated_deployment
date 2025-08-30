@@ -1,0 +1,7 @@
+Acknowledged HIGH severity vulnerabilities.
+These will be addressed in the next major dependency upgrade cycle.
+Spring Boot: EndpointRequest.to() creates wrong matcher if actuator endpoint is not...
+CVE-2025-22235
+
+spring-security-core: Spring Security BCryptPasswordEncoder does not enforce maximum password length
+CVE-2025-22228
