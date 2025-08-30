@@ -12,19 +12,19 @@ spec:
       labels:
         app: login-ci-demo
     spec:
-      # ** NEW **: Harden the security context for the entire Pod
       securityContext:
         runAsNonRoot: true
+      # ** NEW **: Tells this Pod how to pull private images from Docker Hub
+      imagePullSecrets:
+      - name: regcred
       containers:
       - name: login-ci-demo-container
-        image: ruthik005/capstone_project:latest
+        image: ruthik005/capstone_project:latest # This will now be pulled using the 'regcred' secret
         ports:
         - containerPort: 8081
-        
-        # Harden the security context for the individual container
         securityContext:
-          runAsUser: 1001             # Run as the 'appuser' UID we created
-          runAsGroup: 1001            # Run as the 'appuser' GID we created
-          readOnlyRootFilesystem: true  # Make the filesystem read-only
-          allowPrivilegeEscalation: false # Prevent the container from gaining more privileges
+          runAsUser: 1001
+          runAsGroup: 1001
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
 
