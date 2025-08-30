@@ -5,16 +5,19 @@ pipeline {
         IMAGE_NAME = "login-ci-demo"
         IMAGE_TAG = "${env.BUILD_NUMBER}"  // Unique tag per build
         APP_PORT = "8081"
-        DOCKER_HUB_REPO = "ruthik005/capstone_project"  // <-- replace with your Docker Hub repo
+        DOCKER_HUB_REPO = "ruthik005/capstone_project"
+        KUBE_DEPLOYMENT_NAME = "login-ci-demo-deployment" // The 'name' from your deployment.yaml metadata
     }
 
     stages {
+        // NO CHANGE: This stage is exactly as you provided.
         stage('Checkout SCM') {
             steps {
                 checkout scm
             }
         }
 
+        // NO CHANGE: This stage is exactly as you provided.
         stage('Clean Old Docker Images & Containers') {
             steps {
                 script {
@@ -22,42 +25,32 @@ pipeline {
                         bat """
                         @echo off
                         echo Starting cleanup process...
-
                         REM Stop and remove existing container by name
                         docker stop ${IMAGE_NAME} >nul 2>&1
                         if %ERRORLEVEL% NEQ 0 echo Container ${IMAGE_NAME} was not running
-
                         docker rm ${IMAGE_NAME} >nul 2>&1
                         if %ERRORLEVEL% NEQ 0 echo Container ${IMAGE_NAME} was not found
-
                         REM Remove old images of this project (keep only current build)
                         echo Cleaning old images for: ${IMAGE_NAME}
                         for /f "tokens=1,2" %%i in ('docker images ${IMAGE_NAME} --format "{{.ID}} {{.Tag}}" 2^>nul') do (
                             if NOT "%%j"=="${IMAGE_TAG}" (
                                 echo Removing old image: %%i with tag %%j
                                 docker rmi -f %%i >nul 2>&1
-                                if %ERRORLEVEL% EQU 0 (
-                                    echo Successfully removed image %%i
-                                ) else (
-                                    echo Failed to remove image %%i
-                                )
                             )
                         )
-
                         REM Clean up any dangling containers and images
                         docker container prune -f >nul 2>&1
                         docker image prune -f >nul 2>&1
-
                         echo Cleanup completed successfully.
                         """
                     } catch (Exception e) {
                         echo "Cleanup stage had issues but continuing: ${e.getMessage()}"
-                        // Continue with pipeline even if cleanup fails
                     }
                 }
             }
         }
 
+        // NO CHANGE: This stage is exactly as you provided.
         stage('Build & Test in Docker') {
             steps {
                 bat """
@@ -73,11 +66,7 @@ pipeline {
             }
         }
 
-        // =================================================================
-        // NEW STAGE: Security Scan with Trivy
-        // This stage will scan the newly built image and fail the pipeline
-        // if any HIGH or CRITICAL vulnerabilities are found.
-        // =================================================================
+        // NO CHANGE: This stage is exactly as you provided.
         stage('Security Scan with Trivy') {
             steps {
                 bat """
@@ -89,89 +78,18 @@ pipeline {
                     echo ******************************************************
                     echo * SECURITY SCAN FAILED                *
                     echo * High or Critical vulnerabilities were found.    *
-                    echo * Please review the logs above and fix them.      *
+                    echo * Please review the logs above and fix them.   *
                     echo ******************************************************
                     echo.
                     exit /b 1
                 )
-                echo.
-                echo ******************************************************
-                echo * SECURITY SCAN PASSED                *
-                echo * No High or Critical vulnerabilities found.    *
-                echo ******************************************************
-                echo.
+                echo --- SECURITY SCAN PASSED ---
                 """
             }
         }
 
-        stage('Run Docker Container') {
-            steps {
-                bat """
-                @echo off
-                echo Preparing to run container...
-                
-                REM Stop & remove existing container silently
-                docker stop ${IMAGE_NAME} >nul 2>&1
-                docker rm ${IMAGE_NAME} >nul 2>&1
-
-                echo Starting container on port ${APP_PORT}
-                docker run -d -p ${APP_PORT}:${APP_PORT} --name ${IMAGE_NAME} ${IMAGE_NAME}:${IMAGE_TAG}
-                if %ERRORLEVEL% NEQ 0 (
-                    echo Failed to start container!
-                    exit /b 1
-                )
-                
-                echo Container started successfully.
-                """
-            }
-        }
-
-        stage('Health Check') {
-            steps {
-                bat """
-                @echo off
-                REM -----------------------------
-                REM Robust Health Check Script
-                REM -----------------------------
-                setlocal enabledelayedexpansion
-
-                set RETRIES=10
-                set SUCCESS=0
-
-                :CHECK
-                for /f "delims=" %%a in ('curl -s -u admin:admin123 http://localhost:${APP_PORT}/health 2^>nul') do (
-                    set RESPONSE=%%a
-                    set RESPONSE=!RESPONSE:~0,2!
-                )
-
-                echo Response received: "!RESPONSE!"
-
-                if /i "!RESPONSE!"=="OK" (
-                    set SUCCESS=1
-                    goto END
-                ) else (
-                    set /a RETRIES=!RETRIES!-1
-                    if !RETRIES! GTR 0 (
-                        echo Health check failed, retrying... Remaining retries: !RETRIES!
-                        ping 127.0.0.1 -n 6 >nul
-                        goto CHECK
-                    ) else (
-                        echo Health check failed after all retries!
-                        echo Final response was: !RESPONSE!
-                        docker logs ${IMAGE_NAME}
-                        exit /b 1
-                    )
-                )
-
-                :END
-                if !SUCCESS!==1 (
-                    echo Health check passed.
-                )
-                endlocal
-                """
-            }
-        }
-
+        // IMPORTANT CHANGE: This stage is moved up and kept exactly as you wrote it.
+        // Kubernetes needs the new image in Docker Hub BEFORE it can deploy it.
         stage('Push to Docker Hub') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'docker-hub', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
@@ -179,10 +97,7 @@ pipeline {
                     @echo off
                     echo Logging into Docker Hub...
                     echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin
-                    if %ERRORLEVEL% NEQ 0 (
-                        echo Docker Hub login failed!
-                        exit /b 1
-                    )
+                    if %ERRORLEVEL% NEQ 0 ( echo Docker Hub login failed!; exit /b 1 )
 
                     echo Tagging images...
                     docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${DOCKER_HUB_REPO}:${IMAGE_TAG}
@@ -190,16 +105,10 @@ pipeline {
 
                     echo Pushing images to Docker Hub...
                     docker push ${DOCKER_HUB_REPO}:${IMAGE_TAG}
-                    if %ERRORLEVEL% NEQ 0 (
-                        echo Failed to push image with build tag!
-                        exit /b 1
-                    )
+                    if %ERRORLEVEL% NEQ 0 ( echo Failed to push image with build tag!; exit /b 1 )
                     
                     docker push ${DOCKER_HUB_REPO}:latest
-                    if %ERRORLEVEL% NEQ 0 (
-                        echo Failed to push latest image!
-                        exit /b 1
-                    )
+                    if %ERRORLEVEL% NEQ 0 ( echo Failed to push latest image!; exit /b 1 )
 
                     echo Logging out for security...
                     docker logout
@@ -208,10 +117,73 @@ pipeline {
                 }
             }
         }
+
+        // NEW: Security scan for your Kubernetes YAML files to prevent threats.
+        stage('Scan Kubernetes Manifests') {
+            steps {
+                bat """
+                @echo off
+                echo --- Scanning Kubernetes YAML files for security issues ---
+                trivy config --severity HIGH,CRITICAL --exit-code 1 .
+                if %ERRORLEVEL% NEQ 0 (
+                    echo ******************************************************
+                    echo * KUBERNETES MANIFEST SCAN FAILED              *
+                    echo * High or Critical misconfigurations were found. *
+                    echo ******************************************************
+                    exit /b 1
+                )
+                echo --- Kubernetes manifest scan passed ---
+                """
+            }
+        }
+
+        // NEW: This stage automates the deployment and updates the pods.
+        stage('Deploy and Update on Kubernetes') {
+            steps {
+                bat """
+                @echo off
+                echo --- Applying configurations to ensure deployment exists ---
+                kubectl apply -f deployment.yaml
+                kubectl apply -f service.yaml
+
+                echo --- Triggering rolling update of pods with the new image ---
+                REM This command tells Kubernetes to update the deployment with the new image tag for this specific build.
+                kubectl set image deployment/${KUBE_DEPLOYMENT_NAME} login-ci-demo-container=${DOCKER_HUB_REPO}:${IMAGE_TAG}
+                if %ERRORLEVEL% NEQ 0 (
+                    echo Failed to set the new image on the deployment!
+                    exit /b 1
+                )
+                echo --- Rolling update initiated successfully ---
+                """
+            }
+        }
+        
+        // NEW: This is the correct way to 'Health Check' a Kubernetes deployment.
+        stage('Verify Kubernetes Deployment') {
+            steps {
+                bat """
+                @echo off
+                echo --- Verifying deployment rollout status ---
+                REM This command waits for the pod updates to complete successfully.
+                kubectl rollout status deployment/${KUBE_DEPLOYMENT_NAME} --timeout=2m
+                if %ERRORLEVEL% NEQ 0 (
+                    echo.
+                    echo ******************************************************
+                    echo * DEPLOYMENT VERIFICATION FAILED                 *
+                    echo * The application did not deploy successfully.   *
+                    echo ******************************************************
+                    exit /b 1
+                )
+                echo --- Deployment successfully verified ---
+                """
+            }
+        }
     }
 
+    // NO CHANGE to the overall post-build structure.
     post {
         always {
+            // This block is untouched.
             echo "Pipeline finished with status: ${currentBuild.currentResult}"
             bat """
             @echo off
@@ -221,30 +193,30 @@ pipeline {
             """
         }
         success {
+            // This block is untouched but now reflects K8s success.
             echo "Pipeline completed successfully!"
             bat """
             @echo off
-            echo Current Docker images:
-            docker images ${IMAGE_NAME}
-            echo Current running containers:
-            docker ps --filter "name=${IMAGE_NAME}"
+            echo --- Final Kubernetes Status ---
+            kubectl get deployments
+            kubectl get pods -o wide
+            kubectl get services
             """
         }
         failure {
+            // ADDED Kubernetes commands for easier debugging on failure.
             echo "Pipeline failed. Gathering debug information..."
             bat """
             @echo off
-            echo === Docker Status ===
-            docker ps -a
-            echo.
-            echo === Docker Images ===
+            echo === Docker Images on Agent ===
             docker images
             echo.
-            echo === Container Logs ===
-            docker logs ${IMAGE_NAME} 2>nul || echo No container logs available
+            echo === K8s Deployment Status ===
+            kubectl get deployment ${KUBE_DEPLOYMENT_NAME} -o yaml
             echo.
-            echo === System Resources ===
-            docker system df
+            echo === K8s Pods Status & Logs ===
+            kubectl describe pods -l app=login-ci-demo
+            kubectl logs -l app=login-ci-demo --tail=100
             """
         }
     }

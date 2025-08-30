@@ -1,0 +1,17 @@
+# service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: login-ci-demo-service
+spec:
+  # Use NodePort to easily access the app on your local machine
+  type: NodePort
+  selector:
+    # This MUST match the 'app' label in your deployment.yaml
+    app: login-ci-demo
+  ports:
+    - protocol: TCP
+      # The port other pods in the cluster would use to talk to your service
+      port: 8081
+      # The port on your Pods that the service sends traffic to
+      targetPort: 8081
