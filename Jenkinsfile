@@ -136,65 +136,62 @@ pipeline {
             }
         }
 
-        // *** UPDATED STAGE: Using Secret Text credentials instead of kubeconfig file ***
+        // UPDATED STAGE: Fixed to work with Docker Desktop Kubernetes
         stage('Deploy and Update on Kubernetes') {
             steps {
-                withCredentials([
-                    string(credentialsId: 'kube-server-url', variable: 'KUBE_SERVER'),
-                    string(credentialsId: 'kube-jenkins-token', variable: 'KUBE_TOKEN')
-                ]) {
-                    bat """
-                    @echo off
-                    echo --- Setting up kubectl configuration ---
-                    kubectl config set-cluster kubernetes --server=%KUBE_SERVER% --insecure-skip-tls-verify=true
-                    kubectl config set-credentials jenkins --token=%KUBE_TOKEN%
-                    kubectl config set-context jenkins-context --cluster=kubernetes --user=jenkins
-                    kubectl config use-context jenkins-context
+                bat """
+                @echo off
+                echo --- Setting up Docker Desktop Kubernetes context ---
+                kubectl config use-context docker-desktop
+                kubectl config current-context
+                echo Current context set to Docker Desktop
 
-                    echo --- Applying configurations to ensure deployment exists ---
-                    kubectl apply -f deployment.yaml
-                    kubectl apply -f service.yaml
+                echo --- Testing kubectl connection ---
+                kubectl cluster-info
 
-                    echo --- Triggering rolling update of pods with the new image ---
-                    kubectl set image deployment/${KUBE_DEPLOYMENT_NAME} login-ci-demo-container=${DOCKER_HUB_REPO}:${IMAGE_TAG}
-                    if %ERRORLEVEL% NEQ 0 (
-                        echo Failed to set the new image on the deployment!
-                        exit /b 1
-                    )
-                    echo --- Rolling update initiated successfully ---
-                    """
-                }
+                echo --- Applying configurations to ensure deployment exists ---
+                kubectl apply -f deployment.yaml --validate=false
+                if %ERRORLEVEL% NEQ 0 (
+                    echo Failed to apply deployment.yaml!
+                    exit /b 1
+                )
+                kubectl apply -f service.yaml --validate=false
+                if %ERRORLEVEL% NEQ 0 (
+                    echo Failed to apply service.yaml!
+                    exit /b 1
+                )
+
+                echo --- Triggering rolling update of pods with the new image ---
+                kubectl set image deployment/${KUBE_DEPLOYMENT_NAME} login-ci-demo-container=${DOCKER_HUB_REPO}:${IMAGE_TAG}
+                if %ERRORLEVEL% NEQ 0 (
+                    echo Failed to set the new image on the deployment!
+                    exit /b 1
+                )
+                echo --- Rolling update initiated successfully ---
+                """
             }
         }
         
-        // *** UPDATED STAGE: Using Secret Text credentials instead of kubeconfig file ***
+        // UPDATED STAGE: Fixed to work with Docker Desktop Kubernetes
         stage('Verify Kubernetes Deployment') {
             steps {
-                withCredentials([
-                    string(credentialsId: 'kube-server-url', variable: 'KUBE_SERVER'),
-                    string(credentialsId: 'kube-jenkins-token', variable: 'KUBE_TOKEN')
-                ]) {
-                    bat """
-                    @echo off
-                    echo --- Setting up kubectl configuration ---
-                    kubectl config set-cluster kubernetes --server=%KUBE_SERVER% --insecure-skip-tls-verify=true
-                    kubectl config set-credentials jenkins --token=%KUBE_TOKEN%
-                    kubectl config set-context jenkins-context --cluster=kubernetes --user=jenkins
-                    kubectl config use-context jenkins-context
+                bat """
+                @echo off
+                echo --- Using Docker Desktop Kubernetes context ---
+                kubectl config use-context docker-desktop
 
-                    echo --- Verifying deployment rollout status ---
-                    kubectl rollout status deployment/${KUBE_DEPLOYMENT_NAME} --timeout=2m
-                    if %ERRORLEVEL% NEQ 0 (
-                        echo.
-                        echo ******************************************************
-                        echo * DEPLOYMENT VERIFICATION FAILED                   *
-                        echo * The application did not deploy successfully.     *
-                        echo ******************************************************
-                        exit /b 1
-                    )
-                    echo --- Deployment successfully verified ---
-                    """
-                }
+                echo --- Verifying deployment rollout status ---
+                kubectl rollout status deployment/${KUBE_DEPLOYMENT_NAME} --timeout=2m
+                if %ERRORLEVEL% NEQ 0 (
+                    echo.
+                    echo ******************************************************
+                    echo * DEPLOYMENT VERIFICATION FAILED                   *
+                    echo * The application did not deploy successfully.     *
+                    echo ******************************************************
+                    exit /b 1
+                )
+                echo --- Deployment successfully verified ---
+                """
             }
         }
     }
@@ -210,51 +207,35 @@ pipeline {
             """
         }
         success {
-            // *** UPDATED BLOCK: Using Secret Text credentials for successful status check ***
-            withCredentials([
-                string(credentialsId: 'kube-server-url', variable: 'KUBE_SERVER'),
-                string(credentialsId: 'kube-jenkins-token', variable: 'KUBE_TOKEN')
-            ]) {
-                bat """
-                @echo off
-                echo --- Setting up kubectl configuration ---
-                kubectl config set-cluster kubernetes --server=%KUBE_SERVER% --insecure-skip-tls-verify=true
-                kubectl config set-credentials jenkins --token=%KUBE_TOKEN%
-                kubectl config set-context jenkins-context --cluster=kubernetes --user=jenkins
-                kubectl config use-context jenkins-context
+            // UPDATED BLOCK: Fixed to work with Docker Desktop Kubernetes
+            bat """
+            @echo off
+            echo --- Using Docker Desktop Kubernetes context ---
+            kubectl config use-context docker-desktop
 
-                echo --- Final Kubernetes Status ---
-                kubectl get deployments
-                kubectl get pods -o wide
-                kubectl get services
-                """
-            }
+            echo --- Final Kubernetes Status ---
+            kubectl get deployments
+            kubectl get pods -o wide
+            kubectl get services
+            """
         }
         failure {
-            // *** UPDATED BLOCK: Using Secret Text credentials for easier debugging on failure ***
-            withCredentials([
-                string(credentialsId: 'kube-server-url', variable: 'KUBE_SERVER'),
-                string(credentialsId: 'kube-jenkins-token', variable: 'KUBE_TOKEN')
-            ]) {
-                bat """
-                @echo off
-                echo --- Setting up kubectl configuration ---
-                kubectl config set-cluster kubernetes --server=%KUBE_SERVER% --insecure-skip-tls-verify=true
-                kubectl config set-credentials jenkins --token=%KUBE_TOKEN%
-                kubectl config set-context jenkins-context --cluster=kubernetes --user=jenkins
-                kubectl config use-context jenkins-context
+            // UPDATED BLOCK: Fixed to work with Docker Desktop Kubernetes  
+            bat """
+            @echo off
+            echo --- Using Docker Desktop Kubernetes context ---
+            kubectl config use-context docker-desktop
 
-                echo === Docker Images on Agent ===
-                docker images
-                echo.
-                echo === K8s Deployment Status ===
-                kubectl get deployment ${KUBE_DEPLOYMENT_NAME} -o yaml
-                echo.
-                echo === K8s Pods Status ^& Logs ===
-                kubectl describe pods -l app=login-ci-demo
-                kubectl logs -l app=login-ci-demo --tail=100
-                """
-            }
+            echo === Docker Images on Agent ===
+            docker images
+            echo.
+            echo === K8s Deployment Status ===
+            kubectl get deployment ${KUBE_DEPLOYMENT_NAME} -o yaml
+            echo.
+            echo === K8s Pods Status ^& Logs ===
+            kubectl describe pods -l app=login-ci-demo
+            kubectl logs -l app=login-ci-demo --tail=100
+            """
         }
     }
 }
