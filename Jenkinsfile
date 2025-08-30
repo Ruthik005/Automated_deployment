@@ -65,7 +65,7 @@ pipeline {
                 """
             }
         }
-
+        
         // NO CHANGE: This stage is exactly as you provided.
         stage('Security Scan with Trivy') {
             steps {
@@ -76,9 +76,9 @@ pipeline {
                 if %ERRORLEVEL% NEQ 0 (
                     echo.
                     echo ******************************************************
-                    echo * SECURITY SCAN FAILED                *
-                    echo * High or Critical vulnerabilities were found.    *
-                    echo * Please review the logs above and fix them.   *
+                    echo * SECURITY SCAN FAILED                             *
+                    echo * High or Critical vulnerabilities were found.     *
+                    echo * Please review the logs above and fix them.       *
                     echo ******************************************************
                     echo.
                     exit /b 1
@@ -88,8 +88,7 @@ pipeline {
             }
         }
 
-        // IMPORTANT CHANGE: This stage is moved up and kept exactly as you wrote it.
-        // Kubernetes needs the new image in Docker Hub BEFORE it can deploy it.
+        // NO CHANGE: This stage is exactly as you provided.
         stage('Push to Docker Hub') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'docker-hub', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
@@ -118,7 +117,7 @@ pipeline {
             }
         }
 
-        // NEW: Security scan for your Kubernetes YAML files to prevent threats.
+        // NO CHANGE: This stage is exactly as you provided.
         stage('Scan Kubernetes Manifests') {
             steps {
                 bat """
@@ -137,53 +136,55 @@ pipeline {
             }
         }
 
-        // NEW: This stage automates the deployment and updates the pods.
+        // *** UPDATED STAGE: Added withCredentials block and --token flags ***
         stage('Deploy and Update on Kubernetes') {
             steps {
-                bat """
-                @echo off
-                echo --- Applying configurations to ensure deployment exists ---
-                kubectl apply -f deployment.yaml
-                kubectl apply -f service.yaml
+                withCredentials([string(credentialsId: 'kubernetes-token', variable: 'KUBE_TOKEN')]) {
+                    bat """
+                    @echo off
+                    echo --- Applying configurations to ensure deployment exists ---
+                    kubectl --token=%KUBE_TOKEN% apply -f deployment.yaml
+                    kubectl --token=%KUBE_TOKEN% apply -f service.yaml
 
-                echo --- Triggering rolling update of pods with the new image ---
-                REM This command tells Kubernetes to update the deployment with the new image tag for this specific build.
-                kubectl set image deployment/${KUBE_DEPLOYMENT_NAME} login-ci-demo-container=${DOCKER_HUB_REPO}:${IMAGE_TAG}
-                if %ERRORLEVEL% NEQ 0 (
-                    echo Failed to set the new image on the deployment!
-                    exit /b 1
-                )
-                echo --- Rolling update initiated successfully ---
-                """
+                    echo --- Triggering rolling update of pods with the new image ---
+                    REM This command tells Kubernetes to update the deployment with the new image tag for this specific build.
+                    kubectl --token=%KUBE_TOKEN% set image deployment/${KUBE_DEPLOYMENT_NAME} login-ci-demo-container=${DOCKER_HUB_REPO}:${IMAGE_TAG}
+                    if %ERRORLEVEL% NEQ 0 (
+                        echo Failed to set the new image on the deployment!
+                        exit /b 1
+                    )
+                    echo --- Rolling update initiated successfully ---
+                    """
+                }
             }
         }
         
-        // NEW: This is the correct way to 'Health Check' a Kubernetes deployment.
+        // *** UPDATED STAGE: Added withCredentials block and --token flags ***
         stage('Verify Kubernetes Deployment') {
             steps {
-                bat """
-                @echo off
-                echo --- Verifying deployment rollout status ---
-                REM This command waits for the pod updates to complete successfully.
-                kubectl rollout status deployment/${KUBE_DEPLOYMENT_NAME} --timeout=2m
-                if %ERRORLEVEL% NEQ 0 (
-                    echo.
-                    echo ******************************************************
-                    echo * DEPLOYMENT VERIFICATION FAILED                 *
-                    echo * The application did not deploy successfully.   *
-                    echo ******************************************************
-                    exit /b 1
-                )
-                echo --- Deployment successfully verified ---
-                """
+                withCredentials([string(credentialsId: 'kubernetes-token', variable: 'KUBE_TOKEN')]) {
+                    bat """
+                    @echo off
+                    echo --- Verifying deployment rollout status ---
+                    REM This command waits for the pod updates to complete successfully.
+                    kubectl --token=%KUBE_TOKEN% rollout status deployment/${KUBE_DEPLOYMENT_NAME} --timeout=2m
+                    if %ERRORLEVEL% NEQ 0 (
+                        echo.
+                        echo ******************************************************
+                        echo * DEPLOYMENT VERIFICATION FAILED                   *
+                        echo * The application did not deploy successfully.     *
+                        echo ******************************************************
+                        exit /b 1
+                    )
+                    echo --- Deployment successfully verified ---
+                    """
+                }
             }
         }
     }
 
-    // NO CHANGE to the overall post-build structure.
     post {
         always {
-            // This block is untouched.
             echo "Pipeline finished with status: ${currentBuild.currentResult}"
             bat """
             @echo off
@@ -193,31 +194,34 @@ pipeline {
             """
         }
         success {
-            // This block is untouched but now reflects K8s success.
-            echo "Pipeline completed successfully!"
-            bat """
-            @echo off
-            echo --- Final Kubernetes Status ---
-            kubectl get deployments
-            kubectl get pods -o wide
-            kubectl get services
-            """
+            // *** UPDATED BLOCK: Added withCredentials for successful status check ***
+            withCredentials([string(credentialsId: 'kubernetes-token', variable: 'KUBE_TOKEN')]) {
+                bat """
+                @echo off
+                echo --- Final Kubernetes Status ---
+                kubectl --token=%KUBE_TOKEN% get deployments
+                kubectl --token=%KUBE_TOKEN% get pods -o wide
+                kubectl --token=%KUBE_TOKEN% get services
+                """
+            }
         }
         failure {
-            // ADDED Kubernetes commands for easier debugging on failure.
-            echo "Pipeline failed. Gathering debug information..."
-            bat """
-            @echo off
-            echo === Docker Images on Agent ===
-            docker images
-            echo.
-            echo === K8s Deployment Status ===
-            kubectl get deployment ${KUBE_DEPLOYMENT_NAME} -o yaml
-            echo.
-            echo === K8s Pods Status & Logs ===
-            kubectl describe pods -l app=login-ci-demo
-            kubectl logs -l app=login-ci-demo --tail=100
-            """
+            // *** UPDATED BLOCK: Added withCredentials for easier debugging on failure ***
+            withCredentials([string(credentialsId: 'kubernetes-token', variable: 'KUBE_TOKEN')]) {
+                bat """
+                @echo off
+                echo === Docker Images on Agent ===
+                docker images
+                echo.
+                echo === K8s Deployment Status ===
+                kubectl --token=%KUBE_TOKEN% get deployment ${KUBE_DEPLOYMENT_NAME} -o yaml
+                echo.
+                echo === K8s Pods Status & Logs ===
+                kubectl --token=%KUBE_TOKEN% describe pods -l app=login-ci-demo
+                kubectl --token=%KUBE_TOKEN% logs -l app=login-ci-demo --tail=100
+                """
+            }
         }
     }
 }
+
