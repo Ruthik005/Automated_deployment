@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Deployment Status Dashboard</title>
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <title>CI/CD Pipeline Dashboard</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <style>
     :root {
       /* Light theme colors */
@@ -24,6 +24,8 @@
       --warning: #f59e0b;
       --danger: #ef4444;
       --info: #06b6d4;
+      --security: #8b5cf6;
+      --kubernetes: #326ce5;
     }
 
     [data-theme="dark"] {
@@ -44,6 +46,8 @@
       --warning: #f59e0b;
       --danger: #ef4444;
       --info: #06b6d4;
+      --security: #a78bfa;
+      --kubernetes: #60a5fa;
     }
 
     * {
@@ -62,7 +66,7 @@
     }
 
     .container {
-      max-width: 1400px;
+      max-width: 1600px;
       margin: 0 auto;
       padding: 2rem;
     }
@@ -183,10 +187,114 @@
       box-shadow: 0 4px 12px var(--shadow-medium);
     }
 
+    /* Pipeline Overview */
+    .pipeline-overview {
+      background: var(--bg-secondary);
+      border-radius: 1rem;
+      padding: 2rem;
+      margin-bottom: 3rem;
+      border: 1px solid var(--border-color);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .pipeline-overview::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--success), var(--info), var(--security), var(--kubernetes));
+    }
+
+    .pipeline-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+    }
+
+    .pipeline-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .pipeline-title i {
+      color: var(--accent-primary);
+    }
+
+    .pipeline-stages {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+    }
+
+    .stage {
+      background: var(--bg-tertiary);
+      padding: 1.25rem;
+      border-radius: 0.75rem;
+      border: 1px solid var(--border-color);
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .stage:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px var(--shadow-light);
+    }
+
+    .stage-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+
+    .stage-icon {
+      width: 2rem;
+      height: 2rem;
+      border-radius: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 0.75rem;
+      color: white;
+      font-size: 0.875rem;
+    }
+
+    .stage-name {
+      font-weight: 600;
+      color: var(--text-primary);
+      font-size: 0.875rem;
+    }
+
+    .stage-status {
+      font-size: 0.75rem;
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.25rem;
+      font-weight: 500;
+    }
+
+    .stage.success .stage-icon { background: var(--success); }
+    .stage.success .stage-status { background: rgba(16, 185, 129, 0.1); color: var(--success); }
+
+    .stage.building .stage-icon { background: var(--warning); }
+    .stage.building .stage-status { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
+
+    .stage.security .stage-icon { background: var(--security); }
+    .stage.security .stage-status { background: rgba(139, 92, 246, 0.1); color: var(--security); }
+
+    .stage.kubernetes .stage-icon { background: var(--kubernetes); }
+    .stage.kubernetes .stage-status { background: rgba(50, 108, 229, 0.1); color: var(--kubernetes); }
+
     /* Dashboard Grid */
     .dashboard {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
       gap: 1.5rem;
       margin-bottom: 3rem;
     }
@@ -256,6 +364,8 @@
     .card-icon.warning { background: var(--warning); }
     .card-icon.info { background: var(--info); }
     .card-icon.danger { background: var(--danger); }
+    .card-icon.security { background: var(--security); }
+    .card-icon.kubernetes { background: var(--kubernetes); }
 
     .card h3 {
       font-size: 1.125rem;
@@ -290,6 +400,18 @@
       background: rgba(6, 182, 212, 0.1);
       color: var(--info);
       border: 1px solid rgba(6, 182, 212, 0.2);
+    }
+
+    .status-badge.security {
+      background: rgba(139, 92, 246, 0.1);
+      color: var(--security);
+      border: 1px solid rgba(139, 92, 246, 0.2);
+    }
+
+    .status-badge.kubernetes {
+      background: rgba(50, 108, 229, 0.1);
+      color: var(--kubernetes);
+      border: 1px solid rgba(50, 108, 229, 0.2);
     }
 
     .status-description {
@@ -332,6 +454,33 @@
       text-transform: uppercase;
       letter-spacing: 0.5px;
       font-weight: 500;
+    }
+
+    .deployment-details {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .detail-item {
+      padding: 0.75rem;
+      background: var(--bg-tertiary);
+      border-radius: 0.5rem;
+      border: 1px solid var(--border-color);
+    }
+
+    .detail-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-bottom: 0.25rem;
+      font-weight: 500;
+    }
+
+    .detail-value {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text-primary);
     }
 
     /* Logs Section */
@@ -382,7 +531,7 @@
       padding: 1.5rem;
       border: 1px solid var(--border-color);
       border-radius: 0.5rem;
-      max-height: 400px;
+      max-height: 500px;
       overflow: auto;
       font-size: 0.8125rem;
       color: var(--text-secondary);
@@ -434,6 +583,12 @@
     }
 
     /* Responsive Design */
+    @media (max-width: 1200px) {
+      .pipeline-stages {
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      }
+    }
+
     @media (max-width: 768px) {
       .container {
         padding: 1rem;
@@ -461,6 +616,14 @@
       .metrics {
         grid-template-columns: repeat(2, 1fr);
       }
+
+      .deployment-details {
+        grid-template-columns: 1fr;
+      }
+
+      .pipeline-stages {
+        grid-template-columns: 1fr;
+      }
     }
 
     @media (max-width: 480px) {
@@ -480,8 +643,8 @@
   <div class="container fade-in">
     <div class="header">
       <div class="header-content">
-        <h1>Deployment Dashboard</h1>
-        <p>Real-time monitoring and deployment status</p>
+        <h1>CI/CD Pipeline Dashboard</h1>
+        <p>Comprehensive deployment monitoring with security scanning and Kubernetes orchestration</p>
       </div>
       <div class="header-actions">
         <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
@@ -492,6 +655,78 @@
           <i class="fas fa-sign-out-alt"></i>
           Logout
         </button>
+      </div>
+    </div>
+
+    <!-- Pipeline Overview -->
+    <div class="pipeline-overview">
+      <div class="pipeline-header">
+        <div class="pipeline-title">
+          <i class="fas fa-code-branch"></i>
+          Pipeline Status Overview
+        </div>
+        <div class="status-badge success" id="overallStatus">
+          <i class="fas fa-circle" style="font-size: 0.5rem; margin-right: 0.5rem;"></i>
+          ALL STAGES PASSED
+        </div>
+      </div>
+      <div class="pipeline-stages">
+        <div class="stage success">
+          <div class="stage-header">
+            <div class="stage-icon"><i class="fab fa-git-alt"></i></div>
+            <div class="stage-name">Source Checkout</div>
+          </div>
+          <div class="stage-status">Completed</div>
+        </div>
+        <div class="stage success">
+          <div class="stage-header">
+            <div class="stage-icon"><i class="fas fa-broom"></i></div>
+            <div class="stage-name">Cleanup</div>
+          </div>
+          <div class="stage-status">Completed</div>
+        </div>
+        <div class="stage success">
+          <div class="stage-header">
+            <div class="stage-icon"><i class="fab fa-docker"></i></div>
+            <div class="stage-name">Build & Test</div>
+          </div>
+          <div class="stage-status">Completed</div>
+        </div>
+        <div class="stage security">
+          <div class="stage-header">
+            <div class="stage-icon"><i class="fas fa-shield-alt"></i></div>
+            <div class="stage-name">Security Scan</div>
+          </div>
+          <div class="stage-status">Trivy Passed</div>
+        </div>
+        <div class="stage success">
+          <div class="stage-header">
+            <div class="stage-icon"><i class="fas fa-cloud-upload-alt"></i></div>
+            <div class="stage-name">Registry Push</div>
+          </div>
+          <div class="stage-status">Docker Hub</div>
+        </div>
+        <div class="stage security">
+          <div class="stage-header">
+            <div class="stage-icon"><i class="fas fa-file-shield"></i></div>
+            <div class="stage-name">Manifest Scan</div>
+          </div>
+          <div class="stage-status">K8s Secured</div>
+        </div>
+        <div class="stage kubernetes">
+          <div class="stage-header">
+            <div class="stage-icon"><i class="fas fa-dharmachakra"></i></div>
+            <div class="stage-name">K8s Deploy</div>
+          </div>
+          <div class="stage-status">Rolling Update</div>
+        </div>
+        <div class="stage kubernetes">
+          <div class="stage-header">
+            <div class="stage-icon"><i class="fas fa-check-double"></i></div>
+            <div class="stage-name">Verification</div>
+          </div>
+          <div class="stage-status">Health Check</div>
+        </div>
       </div>
     </div>
 
@@ -515,6 +750,84 @@
             <div class="metric-value">8081</div>
             <div class="metric-label">Port</div>
           </div>
+          <div class="metric">
+            <div class="metric-value">2</div>
+            <div class="metric-label">Replicas</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon security"><i class="fas fa-shield-virus"></i></div>
+          <h3>Security Scanning</h3>
+        </div>
+        <div class="status-badge security">
+          <i class="fas fa-circle" style="font-size: 0.5rem; margin-right: 0.5rem;"></i>
+          TRIVY SECURED
+        </div>
+        <div class="status-description">Container images and Kubernetes manifests scanned for vulnerabilities and security misconfigurations.</div>
+        <div class="metrics">
+          <div class="metric">
+            <div class="metric-value">0</div>
+            <div class="metric-label">Critical</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value">0</div>
+            <div class="metric-label">High</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value">Latest</div>
+            <div class="metric-label">Scanner</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon kubernetes"><i class="fas fa-dharmachakra"></i></div>
+          <h3>Kubernetes Deployment</h3>
+        </div>
+        <div class="status-badge kubernetes" id="k8sStatusBadge">
+          <i class="fas fa-circle" style="font-size: 0.5rem; margin-right: 0.5rem;"></i>
+          <span id="k8sStatus">DEPLOYED</span>
+        </div>
+        <div class="status-description">Application successfully deployed to Kubernetes cluster with rolling updates and health monitoring.</div>
+        <div class="deployment-details">
+          <div class="detail-item">
+            <div class="detail-label">Deployment Date</div>
+            <div class="detail-value" id="deploymentDate">Loading...</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-label">Deployment Time</div>
+            <div class="detail-value" id="deploymentTime">Loading...</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon success"><i class="fas fa-cloud-upload-alt"></i></div>
+          <h3>Docker Registry</h3>
+        </div>
+        <div class="status-badge success" id="deployStatusBadge">
+          <i class="fas fa-circle" style="font-size: 0.5rem; margin-right: 0.5rem;"></i>
+          <span id="deployStatus">PUSHED</span>
+        </div>
+        <div class="status-description">Latest container image successfully pushed to Docker Hub registry with versioning.</div>
+        <div class="metrics">
+          <div class="metric">
+            <div class="metric-value" id="deployVersion">v1.0</div>
+            <div class="metric-label">Build</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value">Docker Hub</div>
+            <div class="metric-label">Registry</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value" id="deployTime">2min</div>
+            <div class="metric-label">Age</div>
+          </div>
         </div>
       </div>
 
@@ -527,37 +840,19 @@
           <i class="fas fa-circle" style="font-size: 0.5rem; margin-right: 0.5rem;"></i>
           HEALTHY
         </div>
-        <div class="status-description">All system components are functioning within normal parameters.</div>
+        <div class="status-description">All system components are functioning within normal parameters with active monitoring.</div>
         <div class="metrics">
           <div class="metric">
-            <div class="metric-value">45%</div>
-            <div class="metric-label">CPU Usage</div>
+            <div class="metric-value">Ready</div>
+            <div class="metric-label">Probes</div>
           </div>
           <div class="metric">
-            <div class="metric-value">1.2GB</div>
+            <div class="metric-value">512Mi</div>
             <div class="metric-label">Memory</div>
           </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-header">
-          <div class="card-icon success"><i class="fas fa-cloud-upload-alt"></i></div>
-          <h3>Deployment Status</h3>
-        </div>
-        <div class="status-badge success" id="deployStatusBadge">
-          <i class="fas fa-circle" style="font-size: 0.5rem; margin-right: 0.5rem;"></i>
-          <span id="deployStatus">DEPLOYED</span>
-        </div>
-        <div class="status-description">Latest version successfully deployed and serving traffic.</div>
-        <div class="metrics">
           <div class="metric">
-            <div class="metric-value" id="deployVersion">v1.0</div>
-            <div class="metric-label">Version</div>
-          </div>
-          <div class="metric">
-            <div class="metric-value" id="deployTime">2min</div>
-            <div class="metric-label">Deploy Time</div>
+            <div class="metric-value">500m</div>
+            <div class="metric-label">CPU</div>
           </div>
         </div>
       </div>
@@ -571,24 +866,28 @@
           <i class="fas fa-circle" style="font-size: 0.5rem; margin-right: 0.5rem;"></i>
           MONITORING
         </div>
-        <div class="status-description">Continuous integration pipeline is actively monitoring repository changes.</div>
+        <div class="status-description">Jenkins pipeline actively monitoring repository changes with automated security scanning and deployment.</div>
         <div class="metrics">
           <div class="metric">
             <div class="metric-value">Jenkins</div>
             <div class="metric-label">Platform</div>
           </div>
           <div class="metric">
-            <div class="metric-value">8080</div>
-            <div class="metric-label">Port</div>
+            <div class="metric-value">8</div>
+            <div class="metric-label">Stages</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value">Auto</div>
+            <div class="metric-label">Trigger</div>
           </div>
         </div>
       </div>
     </div>
 
     <div class="logs">
-      <h3><i class="fas fa-terminal"></i> Deployment Logs</h3>
+      <h3><i class="fas fa-terminal"></i> Jenkins Pipeline Logs</h3>
       <div class="logs-container">
-        <pre id="jenkinsLogs">Loading deployment logs...</pre>
+        <pre id="jenkinsLogs">Loading pipeline logs...</pre>
       </div>
     </div>
   </div>
@@ -609,7 +908,7 @@
       localStorage.setItem('theme', newTheme);
     });
 
-    // Jenkins integration - keeping original functionality
+    // Jenkins integration with enhanced features
     const JOB_NAME = ""; // leave empty to use backend default job
     const REFRESH_MS = 8000;
 
@@ -617,6 +916,77 @@
       const arr = text.split("\n");
       const start = arr.length - n;
       return arr.slice(start > 0 ? start : 0).join("\n");
+    }
+
+    function formatDateTime(timestamp) {
+      if (!timestamp) return 'Unknown';
+      const date = new Date(timestamp);
+      const now = new Date();
+      const diffMinutes = Math.floor((now - date) / 60000);
+      
+      const dateStr = date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+      
+      const timeStr = date.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+      
+      return {
+        date: dateStr,
+        time: timeStr,
+        age: diffMinutes < 1 ? "Just now" : 
+             diffMinutes < 60 ? `${diffMinutes}min ago` :
+             diffMinutes < 1440 ? `${Math.floor(diffMinutes/60)}h ago` :
+             `${Math.floor(diffMinutes/1440)}d ago`
+      };
+    }
+
+    function updatePipelineStages(status) {
+      const stages = document.querySelectorAll('.stage');
+      const overallStatus = document.getElementById('overallStatus');
+      
+      if (status.building) {
+        // Update stages to show building state
+        stages.forEach((stage, index) => {
+          if (index < 3) {
+            stage.className = 'stage success';
+            stage.querySelector('.stage-status').textContent = 'Completed';
+          } else if (index === 3) {
+            stage.className = 'stage building';
+            stage.querySelector('.stage-status').textContent = 'Building...';
+          } else {
+            stage.className = 'stage';
+            stage.querySelector('.stage-status').textContent = 'Pending';
+          }
+        });
+        
+        overallStatus.className = 'status-badge warning pulse';
+        overallStatus.innerHTML = '<i class="fas fa-circle" style="font-size: 0.5rem; margin-right: 0.5rem;"></i>PIPELINE RUNNING';
+      } else if (status.result === 'SUCCESS') {
+        stages.forEach(stage => {
+          stage.className = stage.className.includes('security') ? 'stage security' :
+                          stage.className.includes('kubernetes') ? 'stage kubernetes' : 'stage success';
+          const statusEl = stage.querySelector('.stage-status');
+          if (stage.className.includes('security')) {
+            statusEl.textContent = statusEl.textContent.includes('Trivy') ? 'Trivy Passed' : 'K8s Secured';
+          } else if (stage.className.includes('kubernetes')) {
+            statusEl.textContent = statusEl.textContent.includes('Deploy') ? 'Rolling Update' : 'Health Check';
+          } else {
+            statusEl.textContent = 'Completed';
+          }
+        });
+        
+        overallStatus.className = 'status-badge success';
+        overallStatus.innerHTML = '<i class="fas fa-circle" style="font-size: 0.5rem; margin-right: 0.5rem;"></i>ALL STAGES PASSED';
+      } else if (status.result === 'FAILURE') {
+        overallStatus.className = 'status-badge danger';
+        overallStatus.innerHTML = '<i class="fas fa-circle" style="font-size: 0.5rem; margin-right: 0.5rem;"></i>PIPELINE FAILED';
+      }
     }
 
     async function loadJenkinsStatus() {
@@ -627,30 +997,53 @@
         if (!resp.ok) return;
         
         const status = await resp.json();
+        
+        // Update deployment status
         const statusEl = document.getElementById("deployStatus");
         const statusBadgeEl = document.getElementById("deployStatusBadge");
+        const k8sStatusEl = document.getElementById("k8sStatus");
+        const k8sStatusBadgeEl = document.getElementById("k8sStatusBadge");
         
         if (statusEl && statusBadgeEl) {
-          const statusText = status.building ? "BUILDING" : (status.result || "UNKNOWN");
+          const statusText = status.building ? "BUILDING" : (status.result === "SUCCESS" ? "PUSHED" : "FAILED");
           statusEl.textContent = statusText;
           
-          // Update badge styling based on status
           statusBadgeEl.className = "status-badge " + (
-            status.building ? "warning" : 
-            status.result === "SUCCESS" ? "success" : "info"
+            status.building ? "warning pulse" : 
+            status.result === "SUCCESS" ? "success" : "danger"
+          );
+        }
+
+        if (k8sStatusEl && k8sStatusBadgeEl) {
+          const k8sStatusText = status.building ? "DEPLOYING" : (status.result === "SUCCESS" ? "DEPLOYED" : "FAILED");
+          k8sStatusEl.textContent = k8sStatusText;
+          
+          k8sStatusBadgeEl.className = "status-badge kubernetes " + (
+            status.building ? "pulse" : 
+            status.result === "SUCCESS" ? "" : "danger"
           );
         }
         
+        // Update version
         const verEl = document.getElementById("deployVersion");
         if (verEl && status.number) verEl.textContent = "v" + status.number;
         
-        const timeEl = document.getElementById("deployTime");
-        if (timeEl && status.timestamp) {
-          const deployDate = new Date(status.timestamp);
-          const now = new Date();
-          const diffMinutes = Math.floor((now - deployDate) / 60000);
-          timeEl.textContent = diffMinutes < 1 ? "Just now" : diffMinutes + "min ago";
+        // Update deployment date and time
+        if (status.timestamp) {
+          const dateTime = formatDateTime(status.timestamp);
+          
+          const dateEl = document.getElementById("deploymentDate");
+          const timeEl = document.getElementById("deploymentTime");
+          const ageEl = document.getElementById("deployTime");
+          
+          if (dateEl) dateEl.textContent = dateTime.date;
+          if (timeEl) timeEl.textContent = dateTime.time;
+          if (ageEl) ageEl.textContent = dateTime.age;
         }
+        
+        // Update pipeline stages
+        updatePipelineStages(status);
+        
       } catch(e) {
         console.error("Failed to load Jenkins status:", e);
       }
@@ -666,15 +1059,15 @@
         const text = await resp.text();
         const logsEl = document.getElementById("jenkinsLogs");
         if (logsEl) {
-          const logs = lastNLines(text, 300);
-          logsEl.textContent = logs || "No recent logs available.";
+          const logs = lastNLines(text, 500);
+          logsEl.textContent = logs || "No recent pipeline logs available.";
           logsEl.scrollTop = logsEl.scrollHeight;
         }
       } catch(e) {
         console.error("Failed to load Jenkins logs:", e);
         const logsEl = document.getElementById("jenkinsLogs");
         if (logsEl) {
-          logsEl.textContent = "Failed to load deployment logs. Retrying...";
+          logsEl.textContent = "Failed to load pipeline logs. Retrying...";
         }
       }
     }
@@ -693,11 +1086,23 @@
       startAutoRefresh(); 
     }
 
-    // Add fade-in animation to cards
-    const cards = document.querySelectorAll('.card');
-    cards.forEach((card, index) => {
-      card.style.animationDelay = `${index * 0.1}s`;
-      card.classList.add('fade-in');
+    // Add staggered fade-in animation to elements
+    const animatedElements = document.querySelectorAll('.card, .pipeline-overview, .logs');
+    animatedElements.forEach((element, index) => {
+      element.style.animationDelay = `${index * 0.1}s`;
+      element.classList.add('fade-in');
+    });
+
+    // Add hover effects for pipeline stages
+    const stages = document.querySelectorAll('.stage');
+    stages.forEach(stage => {
+      stage.addEventListener('mouseenter', () => {
+        stage.style.transform = 'translateY(-2px) scale(1.02)';
+      });
+      
+      stage.addEventListener('mouseleave', () => {
+        stage.style.transform = 'translateY(0) scale(1)';
+      });
     });
   </script>
 </body>
