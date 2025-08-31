@@ -12,7 +12,6 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <!-- Updated to latest patch release for broad security fixes -->
         <version>3.2.10</version>
         <relativePath/>
     </parent>
@@ -27,25 +26,21 @@
     <!-- Overrides vulnerable dependency versions -->
     <dependencyManagement>
         <dependencies>
-            <!-- Force non-vulnerable version for Tomcat -->
             <dependency>
                 <groupId>org.apache.tomcat.embed</groupId>
                 <artifactId>tomcat-embed-core</artifactId>
                 <version>10.1.44</version>
             </dependency>
-            <!-- Force non-vulnerable version for Spring Security Web -->
             <dependency>
                 <groupId>org.springframework.security</groupId>
                 <artifactId>spring-security-web</artifactId>
                 <version>6.2.7</version>
             </dependency>
-            <!-- Force non-vulnerable version for Spring Security Crypto -->
             <dependency>
                 <groupId>org.springframework.security</groupId>
                 <artifactId>spring-security-crypto</artifactId>
                 <version>6.2.5</version>
             </dependency>
-            <!-- Force non-vulnerable version for Spring Web MVC -->
             <dependency>
                 <groupId>org.springframework</groupId>
                 <artifactId>spring-webmvc</artifactId>
@@ -55,25 +50,19 @@
     </dependencyManagement>
 
     <dependencies>
-        <!-- Spring Boot Web -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
-
-        <!-- Spring Boot Security -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
-
-        <!-- ** ADDED **: Adds the /actuator/health endpoint for Kubernetes health checks -->
+        <!-- ** ADDED **: This creates the /actuator/health endpoint that Kubernetes needs -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
-
-        <!-- Spring Boot Test (JUnit 5) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
@@ -83,24 +72,20 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-thymeleaf</artifactId>
         </dependency>
-
         <!--
         // ===================================================================
-        // REMOVED: The mysql-connector-j dependency has been completely removed
-        // because it is not needed and was causing the application to crash.
+        // REMOVED: The mysql-connector-j dependency was removed because
+        // it is not needed and was causing the application to crash.
         // ===================================================================
         -->
     </dependencies>
 
     <build>
         <plugins>
-            <!-- Spring Boot Maven Plugin -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
-
-            <!-- Maven Surefire Plugin for JUnit 5 -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
@@ -115,3 +100,4 @@
     </build>
 
 </project>
+
