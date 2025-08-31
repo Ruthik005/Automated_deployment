@@ -14,19 +14,25 @@ spec:
       labels:
         app: login-ci-demo
     spec:
-      securityContext:
-        runAsNonRoot: true
+      # Temporarily disable security context to debug
+      # securityContext:
+      #   runAsNonRoot: true
       containers:
       - name: login-ci-demo-container
         image: ruthik005/capstone_project:latest
         ports:
         - containerPort: 8081
-        volumeMounts:
-        - name: tmp-volume
-          mountPath: /tmp
+        # Temporarily remove volume mounts to debug
+        # volumeMounts:
+        # - name: tmp-volume
+        #   mountPath: /tmp
         env:
         - name: SERVER_PORT
           value: "8081"
+        - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
+          value: "health,info"
+        - name: MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS
+          value: "always"
         resources:
           requests:
             memory: "256Mi"
@@ -34,31 +40,33 @@ spec:
           limits:
             memory: "512Mi"
             cpu: "500m"
-        # FIXED: Use root path instead of /actuator/health since actuator was removed
+        # Use actuator health endpoint with proper timeouts
         livenessProbe:
           httpGet:
-            path: /
+            path: /actuator/health
             port: 8081
-          initialDelaySeconds: 90  # Increased delay
+          initialDelaySeconds: 120  # Give more time for Spring Boot to start
           periodSeconds: 30
-          timeoutSeconds: 10       # Added timeout
-          failureThreshold: 5      # Added failure threshold
+          timeoutSeconds: 15
+          failureThreshold: 5
         readinessProbe:
           httpGet:
-            path: /
+            path: /actuator/health
             port: 8081
-          initialDelaySeconds: 60  # Increased delay
+          initialDelaySeconds: 90
           periodSeconds: 10
-          timeoutSeconds: 5        # Added timeout
-          failureThreshold: 3      # Added failure threshold
-        securityContext:
-          runAsUser: 1001
-          runAsGroup: 1001
-          readOnlyRootFilesystem: true
-          allowPrivilegeEscalation: false
-      volumes:
-      - name: tmp-volume
-        emptyDir: {}
+          timeoutSeconds: 10
+          failureThreshold: 5
+        # Temporarily disable security context to debug
+        # securityContext:
+        #   runAsUser: 1001
+        #   runAsGroup: 1001
+        #   readOnlyRootFilesystem: true
+        #   allowPrivilegeEscalation: false
+      # Temporarily remove volumes to debug
+      # volumes:
+      # - name: tmp-volume
+      #   emptyDir: {}
 
 ---
 

@@ -175,6 +175,7 @@ pipeline {
         }
         
 // ENHANCED DEBUGGING STAGE - Add this before your "Verify Kubernetes Deployment" stage
+// CORRECTED DEBUG STAGE - Fix service name
         stage('Debug Pod Issues') {
             steps {
                 withCredentials([file(credentialsId: 'kubeconfig-file', variable: 'KUBECONFIG')]) {
@@ -183,28 +184,38 @@ pipeline {
                     echo --- Using kubeconfig file credential ---
                     set KUBECONFIG=%KUBECONFIG%
 
+                    echo === CLEANUP OLD DEPLOYMENTS FIRST ===
+                    kubectl delete deployment ${KUBE_DEPLOYMENT_NAME} --ignore-not-found=true
+                    echo Waiting 30 seconds for cleanup...
+                    timeout /t 30 /nobreak
+                    
                     echo === Current Deployment Status ===
                     kubectl get deployment ${KUBE_DEPLOYMENT_NAME} -o wide
                     
                     echo === Pod Status and Details ===
                     kubectl get pods -l app=login-ci-demo -o wide
                     
-                    echo === Pod Events ===
-                    kubectl get events --field-selector involvedObject.kind=Pod --sort-by='.lastTimestamp'
-                    
-                    echo === Detailed Pod Description ===
-                    kubectl describe pods -l app=login-ci-demo
-                    
-                    echo === Container Logs ===
+                    echo === Container Logs (if any pods exist) ===
                     for /f "tokens=1" %%i in ('kubectl get pods -l app=login-ci-demo -o name 2^>nul') do (
                         echo --- Logs for %%i ---
-                        kubectl logs %%i --tail=50 --previous=false
+                        kubectl logs %%i --tail=100 --previous=false
+                        echo --- Previous logs for %%i (if restarted) ---
+                        kubectl logs %%i --tail=50 --previous=true 2>nul || echo No previous logs
                         echo.
                     )
                     
-                    echo === Service Status ===
-                    kubectl get svc ${KUBE_DEPLOYMENT_NAME}-service -o wide
-                    kubectl describe svc ${KUBE_DEPLOYMENT_NAME}-service
+                    echo === Service Status - CORRECTED NAME ===
+                    kubectl get svc login-ci-demo-service -o wide
+                    kubectl describe svc login-ci-demo-service
+                    
+                    echo === Test Docker Image Locally ===
+                    echo Testing if the image can start locally...
+                    docker run --rm -d --name test-container -p 8082:8081 ${DOCKER_HUB_REPO}:${IMAGE_TAG}
+                    timeout /t 30 /nobreak
+                    echo Testing health endpoint...
+                    curl http://localhost:8082/actuator/health || echo "Health check failed"
+                    docker logs test-container
+                    docker stop test-container
                     """
                 }
             }
