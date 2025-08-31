@@ -14,18 +14,18 @@ spec:
       labels:
         app: login-ci-demo
     spec:
-      # Temporarily disable security context to debug
-      # securityContext:
-      #   runAsNonRoot: true
+      # ** SECUIRTY FIX ENABLED **: Hardens the security for the entire Pod
+      securityContext:
+        runAsNonRoot: true
       containers:
       - name: login-ci-demo-container
         image: ruthik005/capstone_project:latest
         ports:
         - containerPort: 8081
-        # Temporarily remove volume mounts to debug
-        # volumeMounts:
-        # - name: tmp-volume
-        #   mountPath: /tmp
+        # ** SECUIRTY FIX ENABLED **: Mounts the writable temporary directory
+        volumeMounts:
+        - name: tmp-volume
+          mountPath: /tmp # Corrected path for Spring Boot
         env:
         - name: SERVER_PORT
           value: "8081"
@@ -40,12 +40,12 @@ spec:
           limits:
             memory: "512Mi"
             cpu: "500m"
-        # Use actuator health endpoint with proper timeouts
+        # Using your detailed health probes
         livenessProbe:
           httpGet:
             path: /actuator/health
             port: 8081
-          initialDelaySeconds: 120  # Give more time for Spring Boot to start
+          initialDelaySeconds: 120
           periodSeconds: 30
           timeoutSeconds: 15
           failureThreshold: 5
@@ -57,18 +57,20 @@ spec:
           periodSeconds: 10
           timeoutSeconds: 10
           failureThreshold: 5
-        # Temporarily disable security context to debug
-        # securityContext:
-        #   runAsUser: 1001
-        #   runAsGroup: 1001
-        #   readOnlyRootFilesystem: true
-        #   allowPrivilegeEscalation: false
-      # Temporarily remove volumes to debug
-      # volumes:
-      # - name: tmp-volume
-      #   emptyDir: {}
+        # ** SECUIRTY FIX ENABLED **: Hardens the security for the individual container
+        securityContext:
+          runAsUser: 1001
+          runAsGroup: 1001
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+      # ** SECUIRTY FIX ENABLED **: Defines the writable temporary volume at the pod level
+      volumes:
+      - name: tmp-volume
+        emptyDir: {}
 
 ---
+
+# --- NO CHANGES TO YOUR SERVICE OR INGRESS ---
 
 apiVersion: v1
 kind: Service
@@ -106,3 +108,4 @@ spec:
             name: login-ci-demo-service
             port:
               number: 8081
+
