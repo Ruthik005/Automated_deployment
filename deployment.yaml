@@ -14,7 +14,6 @@ spec:
       labels:
         app: login-ci-demo
     spec:
-      # ** ADDED **: Harden the security context for the entire Pod
       securityContext:
         runAsNonRoot: true
       containers:
@@ -24,7 +23,7 @@ spec:
         - containerPort: 8081
         volumeMounts:
         - name: tmp-volume
-          mountPath: /tmp  # CORRECTED: Standard path for Spring Boot temp files
+          mountPath: /tmp
         env:
         - name: SERVER_PORT
           value: "8081"
@@ -35,32 +34,33 @@ spec:
           limits:
             memory: "512Mi"
             cpu: "500m"
+        # FIXED: Use root path instead of /actuator/health since actuator was removed
         livenessProbe:
           httpGet:
-            path: /actuator/health
+            path: /
             port: 8081
-          initialDelaySeconds: 60
+          initialDelaySeconds: 90  # Increased delay
           periodSeconds: 30
+          timeoutSeconds: 10       # Added timeout
+          failureThreshold: 5      # Added failure threshold
         readinessProbe:
           httpGet:
-            path: /actuator/health
+            path: /
             port: 8081
-          initialDelaySeconds: 30
+          initialDelaySeconds: 60  # Increased delay
           periodSeconds: 10
-        # ** ADDED **: Harden the security context for the individual container
+          timeoutSeconds: 5        # Added timeout
+          failureThreshold: 3      # Added failure threshold
         securityContext:
-          runAsUser: 1001             # Run as the 'appuser' UID
-          runAsGroup: 1001            # Run as the 'appuser' GID
-          readOnlyRootFilesystem: true  # Make the main filesystem read-only
-          allowPrivilegeEscalation: false # Prevent gaining more privileges
-      # ** MOVED & CORRECTED **: Define the writable temporary volume at the pod level
+          runAsUser: 1001
+          runAsGroup: 1001
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
       volumes:
       - name: tmp-volume
         emptyDir: {}
 
 ---
-
-# --- NO CHANGES BELOW THIS LINE ---
 
 apiVersion: v1
 kind: Service
@@ -74,9 +74,9 @@ spec:
     app: login-ci-demo
   ports:
     - protocol: TCP
-      port: 8081          # Internal cluster port
-      targetPort: 8081    # Container port (matches your Dockerfile EXPOSE)
-      nodePort: 30081     # External access port (you'll access via this)
+      port: 8081
+      targetPort: 8081
+      nodePort: 30081
 
 ---
 
@@ -98,4 +98,3 @@ spec:
             name: login-ci-demo-service
             port:
               number: 8081
-

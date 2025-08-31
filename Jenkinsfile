@@ -174,7 +174,43 @@ pipeline {
             }
         }
         
-        // UPDATED STAGE: Using kubeconfig file credential instead of docker-desktop context
+// ENHANCED DEBUGGING STAGE - Add this before your "Verify Kubernetes Deployment" stage
+        stage('Debug Pod Issues') {
+            steps {
+                withCredentials([file(credentialsId: 'kubeconfig-file', variable: 'KUBECONFIG')]) {
+                    bat """
+                    @echo off
+                    echo --- Using kubeconfig file credential ---
+                    set KUBECONFIG=%KUBECONFIG%
+
+                    echo === Current Deployment Status ===
+                    kubectl get deployment ${KUBE_DEPLOYMENT_NAME} -o wide
+                    
+                    echo === Pod Status and Details ===
+                    kubectl get pods -l app=login-ci-demo -o wide
+                    
+                    echo === Pod Events ===
+                    kubectl get events --field-selector involvedObject.kind=Pod --sort-by='.lastTimestamp'
+                    
+                    echo === Detailed Pod Description ===
+                    kubectl describe pods -l app=login-ci-demo
+                    
+                    echo === Container Logs ===
+                    for /f "tokens=1" %%i in ('kubectl get pods -l app=login-ci-demo -o name 2^>nul') do (
+                        echo --- Logs for %%i ---
+                        kubectl logs %%i --tail=50 --previous=false
+                        echo.
+                    )
+                    
+                    echo === Service Status ===
+                    kubectl get svc ${KUBE_DEPLOYMENT_NAME}-service -o wide
+                    kubectl describe svc ${KUBE_DEPLOYMENT_NAME}-service
+                    """
+                }
+            }
+        }
+        
+        // MODIFIED: Update your existing "Verify Kubernetes Deployment" stage
         stage('Verify Kubernetes Deployment') {
             steps {
                 withCredentials([file(credentialsId: 'kubeconfig-file', variable: 'KUBECONFIG')]) {
@@ -183,14 +219,21 @@ pipeline {
                     echo --- Using kubeconfig file credential ---
                     set KUBECONFIG=%KUBECONFIG%
 
-                    echo --- Verifying deployment rollout status ---
-                    kubectl rollout status deployment/${KUBE_DEPLOYMENT_NAME} --timeout=2m
+                    echo --- Verifying deployment rollout status with extended timeout ---
+                    kubectl rollout status deployment/${KUBE_DEPLOYMENT_NAME} --timeout=5m
                     if %ERRORLEVEL% NEQ 0 (
                         echo.
                         echo ******************************************************
                         echo * DEPLOYMENT VERIFICATION FAILED                   *
-                        echo * The application did not deploy successfully.     *
+                        echo * Checking pod status for more details...          *
                         echo ******************************************************
+                        
+                        echo === Final Pod Status ===
+                        kubectl get pods -l app=login-ci-demo -o wide
+                        
+                        echo === Pod Events (Last 10) ===
+                        kubectl get events --field-selector involvedObject.kind=Pod --sort-by='.lastTimestamp' | tail -n 10
+                        
                         exit /b 1
                     )
                     echo --- Deployment successfully verified ---
@@ -245,5 +288,5 @@ pipeline {
                 """
             }
         }
-    }
+    }   
 }
