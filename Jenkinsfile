@@ -177,9 +177,9 @@ pipeline {
                 bat """
                 @echo off
                 set "KUBECONFIG=%KCFG%"
-                kubectl get deployments
-                kubectl get pods -o wide
-                kubectl get services
+                kubectl get deployments --insecure-skip-tls-verify
+                kubectl get pods -o wide --insecure-skip-tls-verify
+                kubectl get services --insecure-skip-tls-verify
                 """
             }
         }
@@ -189,9 +189,9 @@ pipeline {
                 @echo off
                 set "KUBECONFIG=%KCFG%"
                 echo === FINAL DEBUG INFO ===
-                kubectl get deployment %KUBE_DEPLOYMENT_NAME% -o yaml || echo no deployment
-                kubectl describe pods -l %K8S_LABEL%
-                kubectl logs -l %K8S_LABEL% --tail=200
+                kubectl get deployment %KUBE_DEPLOYMENT_NAME% -o yaml --insecure-skip-tls-verify || echo no deployment
+                kubectl describe pods -l %K8S_LABEL% --insecure-skip-tls-verify
+                kubectl logs -l %K8S_LABEL% --tail=200 --insecure-skip-tls-verify
                 """
             }
         }
