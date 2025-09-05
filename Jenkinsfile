@@ -9,7 +9,7 @@ pipeline {
         KUBE_DEPLOYMENT_NAME = "login-ci-demo-deployment"
         KUBE_SERVICE_NAME    = "login-ci-demo-service"
         K8S_LABEL            = "app=login-ci-demo"
-        KUBECONFIG           = "${env.USERPROFILE}\\.kube\\config"
+        KUBECONFIG           = "${env.USERPROFILE}\\.kube\\jenkins-kubeconfig.yaml"
     }
 
     stages {
@@ -91,30 +91,28 @@ pipeline {
         }
 
         stage('Deploy and Update on Kubernetes') {
-        steps {
-            bat """
-            @echo off
-            REM Use Docker Desktop Kubernetes context
-            docker context use default
-            kubectl config use-context docker-desktop
+            steps {
+                bat """
+                @echo off
+                REM Use Docker Desktop Kubernetes context
+                kubectl config use-context docker-desktop
 
-            REM Verify current context and cluster info
-            kubectl config current-context
-            kubectl cluster-info
+                REM Verify current context and cluster info
+                kubectl config current-context
+                kubectl cluster-info
 
-            REM Apply deployment and service
-            kubectl apply -f deployment.yaml --validate=false
-            if %ERRORLEVEL% NEQ 0 exit /b 1
-            kubectl apply -f service.yaml --validate=false
-            if %ERRORLEVEL% NEQ 0 exit /b 1
+                REM Apply deployment and service
+                kubectl apply -f deployment.yaml --validate=false
+                if %ERRORLEVEL% NEQ 0 exit /b 1
+                kubectl apply -f service.yaml --validate=false
+                if %ERRORLEVEL% NEQ 0 exit /b 1
 
-            REM Update the deployment image
-            kubectl set image deployment/%KUBE_DEPLOYMENT_NAME% login-ci-demo-container=%DOCKER_HUB_REPO%:%IMAGE_TAG%
-            if %ERRORLEVEL% NEQ 0 exit /b 1
-            """
+                REM Update the deployment image
+                kubectl set image deployment/%KUBE_DEPLOYMENT_NAME% login-ci-demo-container=%DOCKER_HUB_REPO%:%IMAGE_TAG%
+                if %ERRORLEVEL% NEQ 0 exit /b 1
+                """
+            }
         }
-    }
-
 
         stage('Debug Pod Issues') {
             steps {
