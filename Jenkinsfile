@@ -95,15 +95,15 @@ pipeline {
                     bat """
                     @echo off
                     set "KUBECONFIG=%KCFG%"
-                    kubectl config current-context
-                    kubectl cluster-info
+                    kubectl --insecure-skip-tls-verify config current-context
+                    kubectl --insecure-skip-tls-verify cluster-info
 
-                    kubectl apply -f deployment.yaml --validate=false
+                    kubectl --insecure-skip-tls-verify apply -f deployment.yaml --validate=false
                     if %ERRORLEVEL% NEQ 0 exit /b 1
-                    kubectl apply -f service.yaml --validate=false
+                    kubectl --insecure-skip-tls-verify apply -f service.yaml --validate=false
                     if %ERRORLEVEL% NEQ 0 exit /b 1
 
-                    kubectl set image deployment/%KUBE_DEPLOYMENT_NAME% login-ci-demo-container=%DOCKER_HUB_REPO%:%IMAGE_TAG%
+                    kubectl --insecure-skip-tls-verify set image deployment/%KUBE_DEPLOYMENT_NAME% login-ci-demo-container=%DOCKER_HUB_REPO%:%IMAGE_TAG%
                     if %ERRORLEVEL% NEQ 0 exit /b 1
                     """
                 }
@@ -118,21 +118,21 @@ pipeline {
                     set "KUBECONFIG=%KCFG%"
 
                     echo === Current Deployment Status ===
-                    kubectl get deployment %KUBE_DEPLOYMENT_NAME% -o wide || echo Deployment not found
+                    kubectl --insecure-skip-tls-verify get deployment %KUBE_DEPLOYMENT_NAME% -o wide || echo Deployment not found
 
                     echo === Pod Status and Details ===
-                    kubectl get pods -l %K8S_LABEL% -o wide
+                    kubectl --insecure-skip-tls-verify get pods -l %K8S_LABEL% -o wide
 
                     echo === Container Logs (last 50 lines per pod) ===
-                    for /f %%p in ('kubectl get pods -l %K8S_LABEL% -o name 2^>nul') do (
+                    for /f %%p in ('kubectl --insecure-skip-tls-verify get pods -l %K8S_LABEL% -o name 2^>nul') do (
                         echo --- Logs for %%p ---
-                        kubectl logs %%p --tail=50
+                        kubectl --insecure-skip-tls-verify logs %%p --tail=50
                         echo.
                     )
 
                     echo === Service Status ===
-                    kubectl get svc %KUBE_SERVICE_NAME% -o wide
-                    kubectl describe svc %KUBE_SERVICE_NAME%
+                    kubectl --insecure-skip-tls-verify get svc %KUBE_SERVICE_NAME% -o wide
+                    kubectl --insecure-skip-tls-verify describe svc %KUBE_SERVICE_NAME%
 
                     echo === Local Test Run of Image ===
                     docker run --rm -d --name test-container -p 8082:8081 %DOCKER_HUB_REPO%:%IMAGE_TAG%
@@ -152,15 +152,15 @@ pipeline {
                     set "KUBECONFIG=%KCFG%"
                     ping -n 10 127.0.0.1 >nul
 
-                    kubectl rollout status deployment/%KUBE_DEPLOYMENT_NAME% --timeout=5m
+                    kubectl --insecure-skip-tls-verify rollout status deployment/%KUBE_DEPLOYMENT_NAME% --timeout=5m
                     if %ERRORLEVEL% NEQ 0 (
                         echo DEPLOYMENT VERIFICATION FAILED
-                        kubectl get pods -l %K8S_LABEL% -o wide
+                        kubectl --insecure-skip-tls-verify get pods -l %K8S_LABEL% -o wide
                         exit /b 1
                     )
 
-                    kubectl get pods -l %K8S_LABEL% -o wide
-                    kubectl get svc %KUBE_SERVICE_NAME% -o wide
+                    kubectl --insecure-skip-tls-verify get pods -l %K8S_LABEL% -o wide
+                    kubectl --insecure-skip-tls-verify get svc %KUBE_SERVICE_NAME% -o wide
                     """
                 }
             }
@@ -177,9 +177,9 @@ pipeline {
                 bat """
                 @echo off
                 set "KUBECONFIG=%KCFG%"
-                kubectl get deployments --insecure-skip-tls-verify
-                kubectl get pods -o wide --insecure-skip-tls-verify
-                kubectl get services --insecure-skip-tls-verify
+                kubectl --insecure-skip-tls-verify get deployments
+                kubectl --insecure-skip-tls-verify get pods -o wide
+                kubectl --insecure-skip-tls-verify get services
                 """
             }
         }
@@ -189,9 +189,9 @@ pipeline {
                 @echo off
                 set "KUBECONFIG=%KCFG%"
                 echo === FINAL DEBUG INFO ===
-                kubectl get deployment %KUBE_DEPLOYMENT_NAME% -o yaml --insecure-skip-tls-verify || echo no deployment
-                kubectl describe pods -l %K8S_LABEL% --insecure-skip-tls-verify
-                kubectl logs -l %K8S_LABEL% --tail=200 --insecure-skip-tls-verify
+                kubectl --insecure-skip-tls-verify get deployment %KUBE_DEPLOYMENT_NAME% -o yaml || echo no deployment
+                kubectl --insecure-skip-tls-verify describe pods -l %K8S_LABEL%
+                kubectl --insecure-skip-tls-verify logs -l %K8S_LABEL% --tail=200
                 """
             }
         }
