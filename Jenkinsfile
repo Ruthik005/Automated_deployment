@@ -48,7 +48,10 @@ pipeline {
             steps {
                 bat """
                 @echo off
-                trivy image --severity CRITICAL,HIGH --exit-code 1 --ignore-unfixed %IMAGE_NAME%:%IMAGE_TAG%
+                set TRIVY_TIMEOUT=10m
+                set TRIVY_CACHE_CLEAR=true
+                echo Starting Trivy security scan with extended timeout...
+                trivy image --timeout %TRIVY_TIMEOUT% --severity CRITICAL,HIGH --exit-code 1 --ignore-unfixed %IMAGE_NAME%:%IMAGE_TAG%
                 if %ERRORLEVEL% NEQ 0 exit /b 1
                 """
             }
