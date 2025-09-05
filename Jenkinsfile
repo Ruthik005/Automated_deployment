@@ -9,6 +9,7 @@ pipeline {
         KUBE_DEPLOYMENT_NAME = "login-ci-demo-deployment"
         KUBE_SERVICE_NAME    = "login-ci-demo-service"
         K8S_LABEL            = "app=login-ci-demo"
+        KUBECONFIG           = "${env.USERPROFILE}\\.kube\\config"
     }
 
     stages {
@@ -91,78 +92,72 @@ pipeline {
 
         stage('Deploy and Update on Kubernetes') {
             steps {
-                withCredentials([file(credentialsId: 'kubeconfig-file', variable: 'KCFG')]) {
-                    bat """
-                    @echo off
-                    set "KUBECONFIG=%KCFG%"
-                    kubectl --insecure-skip-tls-verify config current-context
-                    kubectl --insecure-skip-tls-verify cluster-info
+                bat """
+                @echo off
+                set "KUBECONFIG=%KUBECONFIG%"
+                kubectl config current-context
+                kubectl cluster-info
 
-                    kubectl --insecure-skip-tls-verify apply -f deployment.yaml --validate=false
-                    if %ERRORLEVEL% NEQ 0 exit /b 1
-                    kubectl --insecure-skip-tls-verify apply -f service.yaml --validate=false
-                    if %ERRORLEVEL% NEQ 0 exit /b 1
+                kubectl apply -f deployment.yaml --validate=false
+                if %ERRORLEVEL% NEQ 0 exit /b 1
+                kubectl apply -f service.yaml --validate=false
+                if %ERRORLEVEL% NEQ 0 exit /b 1
 
-                    kubectl --insecure-skip-tls-verify set image deployment/%KUBE_DEPLOYMENT_NAME% login-ci-demo-container=%DOCKER_HUB_REPO%:%IMAGE_TAG%
-                    if %ERRORLEVEL% NEQ 0 exit /b 1
-                    """
-                }
+                kubectl set image deployment/%KUBE_DEPLOYMENT_NAME% login-ci-demo-container=%DOCKER_HUB_REPO%:%IMAGE_TAG%
+                if %ERRORLEVEL% NEQ 0 exit /b 1
+                """
             }
         }
 
         stage('Debug Pod Issues') {
             steps {
-                withCredentials([file(credentialsId: 'kubeconfig-file', variable: 'KCFG')]) {
-                    bat """
-                    @echo off
-                    set "KUBECONFIG=%KCFG%"
+                bat """
+                @echo off
+                set "KUBECONFIG=%KUBECONFIG%"
 
-                    echo === Current Deployment Status ===
-                    kubectl --insecure-skip-tls-verify get deployment %KUBE_DEPLOYMENT_NAME% -o wide || echo Deployment not found
+                echo === Current Deployment Status ===
+                kubectl get deployment %KUBE_DEPLOYMENT_NAME% -o wide || echo Deployment not found
 
-                    echo === Pod Status and Details ===
-                    kubectl --insecure-skip-tls-verify get pods -l %K8S_LABEL% -o wide
+                echo === Pod Status and Details ===
+                kubectl get pods -l %K8S_LABEL% -o wide
 
-                    echo === Container Logs (last 50 lines per pod) ===
-                    for /f %%p in ('kubectl --insecure-skip-tls-verify get pods -l %K8S_LABEL% -o name 2^>nul') do (
-                        echo --- Logs for %%p ---
-                        kubectl --insecure-skip-tls-verify logs %%p --tail=50
-                        echo.
-                    )
+                echo === Container Logs (last 50 lines per pod) ===
+                for /f %%p in ('kubectl get pods -l %K8S_LABEL% -o name 2^>nul') do (
+                    echo --- Logs for %%p ---
+                    kubectl logs %%p --tail=50
+                    echo.
+                )
 
-                    echo === Service Status ===
-                    kubectl --insecure-skip-tls-verify get svc %KUBE_SERVICE_NAME% -o wide
-                    kubectl --insecure-skip-tls-verify describe svc %KUBE_SERVICE_NAME%
+                echo === Service Status ===
+                kubectl get svc %KUBE_SERVICE_NAME% -o wide
+                kubectl describe svc %KUBE_SERVICE_NAME%
 
-                    echo === Local Test Run of Image ===
-                    docker run --rm -d --name test-container -p 8082:8081 %DOCKER_HUB_REPO%:%IMAGE_TAG%
-                    ping -n 20 127.0.0.1 >nul
-                    curl http://localhost:8082/actuator/health || echo Health endpoint failed
-                    docker stop test-container
-                    """
-                }
+                echo === Local Test Run of Image ===
+                docker run --rm -d --name test-container -p 8082:8081 %DOCKER_HUB_REPO%:%IMAGE_TAG%
+                ping -n 20 127.0.0.1 >nul
+                curl http://localhost:8082/actuator/health || echo Health endpoint failed
+                docker stop test-container
+                """
             }
         }
 
         stage('Verify Kubernetes Deployment') {
             steps {
-                withCredentials([file(credentialsId: 'kubeconfig-file', variable: 'KCFG')]) {
-                    bat """
-                    @echo off
-                    set "KUBECONFIG=%KCFG%"
-                    ping -n 10 127.0.0.1 >nul
+                bat """
+                @echo off
+                set "KUBECONFIG=%KUBECONFIG%"
+                ping -n 10 127.0.0.1 >nul
 
-                    kubectl --insecure-skip-tls-verify rollout status deployment/%KUBE_DEPLOYMENT_NAME% --timeout=5m
-                    if %ERRORLEVEL% NEQ 0 (
-                        echo DEPLOYMENT VERIFICATION FAILED
-                        kubectl --insecure-skip-tls-verify get pods -l %K8S_LABEL% -o wide
-                        exit /b 1
-                    )
+                kubectl rollout status deployment/%KUBE_DEPLOYMENT_NAME% --timeout=5m
+                if %ERRORLEVEL% NEQ 0 (
+                    echo DEPLOYMENT VERIFICATION FAILED
+                    kubectl get pods -l %K8S_LABEL% -o wide
+                    exit /b 1
+                )
 
-                    kubectl --insecure-skip-tls-verify get pods -l %K8S_LABEL% -o wide
-                    kubectl --insecure-skip-tls-verify get svc %KUBE_SERVICE_NAME% -o wide
-                    """
-                }
+                kubectl get pods -l %K8S_LABEL% -o wide
+                kubectl get svc %KUBE_SERVICE_NAME% -o wide
+                """
             }
         }
     }
@@ -173,27 +168,23 @@ pipeline {
             bat "docker system prune -f >nul 2>&1"
         }
         success {
-            withCredentials([file(credentialsId: 'kubeconfig-file', variable: 'KCFG')]) {
-                bat """
-                @echo off
-                set "KUBECONFIG=%KCFG%"
-                kubectl --insecure-skip-tls-verify get deployments
-                kubectl --insecure-skip-tls-verify get pods -o wide
-                kubectl --insecure-skip-tls-verify get services
-                """
-            }
+            bat """
+            @echo off
+            set "KUBECONFIG=%KUBECONFIG%"
+            kubectl get deployments
+            kubectl get pods -o wide
+            kubectl get services
+            """
         }
         failure {
-            withCredentials([file(credentialsId: 'kubeconfig-file', variable: 'KCFG')]) {
-                bat """
-                @echo off
-                set "KUBECONFIG=%KCFG%"
-                echo === FINAL DEBUG INFO ===
-                kubectl --insecure-skip-tls-verify get deployment %KUBE_DEPLOYMENT_NAME% -o yaml || echo no deployment
-                kubectl --insecure-skip-tls-verify describe pods -l %K8S_LABEL%
-                kubectl --insecure-skip-tls-verify logs -l %K8S_LABEL% --tail=200
-                """
-            }
+            bat """
+            @echo off
+            set "KUBECONFIG=%KUBECONFIG%"
+            echo === FINAL DEBUG INFO ===
+            kubectl get deployment %KUBE_DEPLOYMENT_NAME% -o yaml || echo no deployment
+            kubectl describe pods -l %K8S_LABEL%
+            kubectl logs -l %K8S_LABEL% --tail=200
+            """
         }
     }
 }
