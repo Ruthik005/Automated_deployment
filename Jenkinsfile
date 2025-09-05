@@ -9,7 +9,6 @@ pipeline {
         KUBE_DEPLOYMENT_NAME = "login-ci-demo-deployment"
         KUBE_SERVICE_NAME    = "login-ci-demo-service"
         K8S_LABEL            = "app=login-ci-demo"
-        KUBECONFIG           = "${env.USERPROFILE}\\.kube\\jenkins-kubeconfig.yaml"
     }
 
     stages {
@@ -92,77 +91,85 @@ pipeline {
 
         stage('Deploy and Update on Kubernetes') {
             steps {
-                bat """
-                @echo off
-                REM Use Docker Desktop Kubernetes context
-                kubectl config use-context docker-desktop
+                withCredentials([file(credentialsId: 'kubeconfig-file', variable: 'KCFG')]) {
+                    bat """
+                    @echo off
+                    set "KUBECONFIG=%KCFG%"
+                    
+                    REM Use Docker Desktop Kubernetes context
+                    kubectl config use-context docker-desktop
 
-                REM Verify current context and cluster info
-                kubectl config current-context
-                kubectl cluster-info
+                    REM Verify current context and cluster info
+                    kubectl config current-context
+                    kubectl cluster-info
 
-                REM Apply deployment and service
-                kubectl apply -f deployment.yaml --validate=false
-                if %ERRORLEVEL% NEQ 0 exit /b 1
-                kubectl apply -f service.yaml --validate=false
-                if %ERRORLEVEL% NEQ 0 exit /b 1
+                    REM Apply deployment and service
+                    kubectl apply -f deployment.yaml --validate=false
+                    if %ERRORLEVEL% NEQ 0 exit /b 1
+                    kubectl apply -f service.yaml --validate=false
+                    if %ERRORLEVEL% NEQ 0 exit /b 1
 
-                REM Update the deployment image
-                kubectl set image deployment/%KUBE_DEPLOYMENT_NAME% login-ci-demo-container=%DOCKER_HUB_REPO%:%IMAGE_TAG%
-                if %ERRORLEVEL% NEQ 0 exit /b 1
-                """
+                    REM Update the deployment image
+                    kubectl set image deployment/%KUBE_DEPLOYMENT_NAME% login-ci-demo-container=%DOCKER_HUB_REPO%:%IMAGE_TAG%
+                    if %ERRORLEVEL% NEQ 0 exit /b 1
+                    """
+                }
             }
         }
 
         stage('Debug Pod Issues') {
             steps {
-                bat """
-                @echo off
-                set "KUBECONFIG=%KUBECONFIG%"
+                withCredentials([file(credentialsId: 'kubeconfig-file', variable: 'KCFG')]) {
+                    bat """
+                    @echo off
+                    set "KUBECONFIG=%KCFG%"
 
-                echo === Current Deployment Status ===
-                kubectl get deployment %KUBE_DEPLOYMENT_NAME% -o wide || echo Deployment not found
+                    echo === Current Deployment Status ===
+                    kubectl get deployment %KUBE_DEPLOYMENT_NAME% -o wide || echo Deployment not found
 
-                echo === Pod Status and Details ===
-                kubectl get pods -l %K8S_LABEL% -o wide
+                    echo === Pod Status and Details ===
+                    kubectl get pods -l %K8S_LABEL% -o wide
 
-                echo === Container Logs (last 50 lines per pod) ===
-                for /f %%p in ('kubectl get pods -l %K8S_LABEL% -o name 2^>nul') do (
-                    echo --- Logs for %%p ---
-                    kubectl logs %%p --tail=50
-                    echo.
-                )
+                    echo === Container Logs (last 50 lines per pod) ===
+                    for /f %%p in ('kubectl get pods -l %K8S_LABEL% -o name 2^>nul') do (
+                        echo --- Logs for %%p ---
+                        kubectl logs %%p --tail=50
+                        echo.
+                    )
 
-                echo === Service Status ===
-                kubectl get svc %KUBE_SERVICE_NAME% -o wide
-                kubectl describe svc %KUBE_SERVICE_NAME%
+                    echo === Service Status ===
+                    kubectl get svc %KUBE_SERVICE_NAME% -o wide
+                    kubectl describe svc %KUBE_SERVICE_NAME%
 
-                echo === Local Test Run of Image ===
-                docker run --rm -d --name test-container -p 8082:8081 %DOCKER_HUB_REPO%:%IMAGE_TAG%
-                ping -n 20 127.0.0.1 >nul
-                curl http://localhost:8082/actuator/health || echo Health endpoint failed
-                docker stop test-container
-                """
+                    echo === Local Test Run of Image ===
+                    docker run --rm -d --name test-container -p 8082:8081 %DOCKER_HUB_REPO%:%IMAGE_TAG%
+                    ping -n 20 127.0.0.1 >nul
+                    curl http://localhost:8082/actuator/health || echo Health endpoint failed
+                    docker stop test-container
+                    """
+                }
             }
         }
 
         stage('Verify Kubernetes Deployment') {
             steps {
-                bat """
-                @echo off
-                set "KUBECONFIG=%KUBECONFIG%"
-                ping -n 10 127.0.0.1 >nul
+                withCredentials([file(credentialsId: 'kubeconfig-file', variable: 'KCFG')]) {
+                    bat """
+                    @echo off
+                    set "KUBECONFIG=%KCFG%"
+                    ping -n 10 127.0.0.1 >nul
 
-                kubectl rollout status deployment/%KUBE_DEPLOYMENT_NAME% --timeout=5m
-                if %ERRORLEVEL% NEQ 0 (
-                    echo DEPLOYMENT VERIFICATION FAILED
+                    kubectl rollout status deployment/%KUBE_DEPLOYMENT_NAME% --timeout=5m
+                    if %ERRORLEVEL% NEQ 0 (
+                        echo DEPLOYMENT VERIFICATION FAILED
+                        kubectl get pods -l %K8S_LABEL% -o wide
+                        exit /b 1
+                    )
+
                     kubectl get pods -l %K8S_LABEL% -o wide
-                    exit /b 1
-                )
-
-                kubectl get pods -l %K8S_LABEL% -o wide
-                kubectl get svc %KUBE_SERVICE_NAME% -o wide
-                """
+                    kubectl get svc %KUBE_SERVICE_NAME% -o wide
+                    """
+                }
             }
         }
     }
@@ -173,23 +180,27 @@ pipeline {
             bat "docker system prune -f >nul 2>&1"
         }
         success {
-            bat """
-            @echo off
-            set "KUBECONFIG=%KUBECONFIG%"
-            kubectl get deployments
-            kubectl get pods -o wide
-            kubectl get services
-            """
+            withCredentials([file(credentialsId: 'kubeconfig-file', variable: 'KCFG')]) {
+                bat """
+                @echo off
+                set "KUBECONFIG=%KCFG%"
+                kubectl get deployments
+                kubectl get pods -o wide
+                kubectl get services
+                """
+            }
         }
         failure {
-            bat """
-            @echo off
-            set "KUBECONFIG=%KUBECONFIG%"
-            echo === FINAL DEBUG INFO ===
-            kubectl get deployment %KUBE_DEPLOYMENT_NAME% -o yaml || echo no deployment
-            kubectl describe pods -l %K8S_LABEL%
-            kubectl logs -l %K8S_LABEL% --tail=200
-            """
+            withCredentials([file(credentialsId: 'kubeconfig-file', variable: 'KCFG')]) {
+                bat """
+                @echo off
+                set "KUBECONFIG=%KCFG%"
+                echo === FINAL DEBUG INFO ===
+                kubectl get deployment %KUBE_DEPLOYMENT_NAME% -o yaml || echo no deployment
+                kubectl describe pods -l %K8S_LABEL%
+                kubectl logs -l %K8S_LABEL% --tail=200
+                """
+            }
         }
     }
 }
