@@ -90,32 +90,29 @@ pipeline {
             }
         }
 
-        stage('Deploy and Update on Kubernetes') {
-            steps {
-                withCredentials([file(credentialsId: 'kubeconfig-file', variable: 'KCFG')]) {
-                    bat """
-                    @echo off
-                    set "KUBECONFIG=%KCFG%"
+            stage('Deploy and Update on Kubernetes') {
+        steps {
+            withCredentials([file(credentialsId: 'kubeconfig-file', variable: 'KCFG')]) {
+                bat """
+                @echo off
+                set "KUBECONFIG=%KCFG%"
+                kubectl config use-context docker-desktop
+                kubectl config current-context
+                kubectl cluster-info
 
-                    REM Use correct context from kubeconfig
-                    kubectl config use-context default-context
+                kubectl apply -f deployment.yaml --validate=false
+                if %ERRORLEVEL% NEQ 0 exit /b 1
 
-                    REM Verify current context and cluster info
-                    kubectl config current-context
-                    kubectl cluster-info
+                kubectl apply -f service.yaml --validate=false
+                if %ERRORLEVEL% NEQ 0 exit /b 1
 
-                    REM Apply deployment and service
-                    kubectl apply -f deployment.yaml --validate=false
-                    if %ERRORLEVEL% NEQ 0 exit /b 1
-                    kubectl apply -f service.yaml --validate=false
-                    if %ERRORLEVEL% NEQ 0 exit /b 1
-
-                    REM Update the deployment image
-                    kubectl set image deployment/%KUBE_DEPLOYMENT_NAME% login-ci-demo-container=%DOCKER_HUB_REPO%:%IMAGE_TAG%
-                    if %ERRORLEVEL% NEQ 0 exit /b 1
-                    """
-                }
+                kubectl set image deployment/%KUBE_DEPLOYMENT_NAME% login-ci-demo-container=%DOCKER_HUB_REPO%:%IMAGE_TAG%
+                if %ERRORLEVEL% NEQ 0 exit /b 1
+                """
             }
+        }
+    }
+
         }
 
         stage('Debug Pod Issues') {
