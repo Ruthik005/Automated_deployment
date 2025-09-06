@@ -5,11 +5,10 @@ pipeline {
         IMAGE_NAME           = "login-ci-demo"
         IMAGE_TAG            = "${env.BUILD_NUMBER}"
         APP_PORT             = "8081"
-        DOCKER_IMAGE         = "ruthik005/capstone_project:latest"
+        DOCKER_HUB_REPO      = "ruthik005/capstone_project"
         KUBE_DEPLOYMENT_NAME = "login-ci-demo-deployment"
         KUBE_SERVICE_NAME    = "login-ci-demo-service"
         K8S_LABEL            = "app=login-ci-demo"
-        NAMESPACE            = "ci-cd-app"
         KUBECONFIG           = "${env.USERPROFILE}\\.kube\\jenkins-kubeconfig.yaml"
         TRIVY_TIMEOUT        = "10m"
     }
@@ -38,23 +37,16 @@ pipeline {
             }
         }
 
-        stage('Build Local Docker Image') {
+        stage('Build & Test in Docker') {
             steps {
                 bat """
                 @echo off
-                echo === Building Local Docker Image ===
-                docker build --no-cache -t %DOCKER_IMAGE% .
+                echo === Building Docker Image ===
+                docker build --no-cache -t %IMAGE_NAME%:%IMAGE_TAG% .
                 if %ERRORLEVEL% NEQ 0 exit /b 1
-                """
-            }
-        }
 
-        stage('Run Local Container Test') {
-            steps {
-                bat """
-                @echo off
                 echo === Running Container Test ===
-                docker run --rm -d --name test-build -p 8085:%APP_PORT% %DOCKER_IMAGE%
+                docker run --rm -d --name test-build -p 8085:%APP_PORT% %IMAGE_NAME%:%IMAGE_TAG%
                 ping -n 15 127.0.0.1 >nul
                 curl http://localhost:8085/actuator/health || echo Health check failed
                 docker stop test-build
@@ -67,27 +59,67 @@ pipeline {
                 bat """
                 @echo off
                 echo === Running Trivy Scan ===
-                trivy image --timeout %TRIVY_TIMEOUT% --severity CRITICAL,HIGH --exit-code 1 --ignore-unfixed %DOCKER_IMAGE%
+                trivy image --timeout %TRIVY_TIMEOUT% --severity CRITICAL,HIGH --exit-code 1 --ignore-unfixed %IMAGE_NAME%:%IMAGE_TAG%
                 if %ERRORLEVEL% NEQ 0 exit /b 1
                 """
             }
         }
 
-        stage('Deploy to Local Kubernetes') {
+        stage('Push to Docker Hub') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'docker-hub', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    bat """
+                    @echo off
+                    echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin
+                    if %ERRORLEVEL% NEQ 0 exit /b 1
+
+                    docker tag %IMAGE_NAME%:%IMAGE_TAG% %DOCKER_HUB_REPO%:%IMAGE_TAG%
+                    docker tag %IMAGE_NAME%:%IMAGE_TAG% %DOCKER_HUB_REPO%:latest
+
+                    docker push %DOCKER_HUB_REPO%:%IMAGE_TAG%
+                    if %ERRORLEVEL% NEQ 0 exit /b 1
+                    docker push %DOCKER_HUB_REPO%:latest
+                    if %ERRORLEVEL% NEQ 0 exit /b 1
+
+                    docker logout
+                    """
+                }
+            }
+        }
+
+        stage('Scan Kubernetes Manifests') {
             steps {
                 bat """
                 @echo off
-                set "KUBECONFIG=%KUBECONFIG%"
-                
-                echo === Ensure Namespace Exists ===
-                kubectl create namespace %NAMESPACE% --dry-run=client -o yaml | kubectl apply -f -
-
-                echo === Applying Deployment & Service ===
-                kubectl apply -f k8s/deployment-service.yaml -n %NAMESPACE%
-
-                echo === Wait for Rollout ===
-                kubectl rollout status deployment/%KUBE_DEPLOYMENT_NAME% -n %NAMESPACE%
+                echo === Scanning Kubernetes YAML with Trivy ===
+                trivy config --severity HIGH,CRITICAL --exit-code 1 .
+                if %ERRORLEVEL% NEQ 0 exit /b 1
                 """
+            }
+        }
+
+        stage('Deploy and Update on Kubernetes') {
+            steps {
+                withCredentials([file(credentialsId: 'kubeconfig-file', variable: 'KCFG')]) {
+                    bat """
+                    @echo off
+                    set "KUBECONFIG=%KCFG%"
+                    kubectl config use-context docker-desktop
+                    kubectl config current-context
+                    kubectl cluster-info
+
+                    echo === Applying Deployment and Service ===
+                    kubectl apply -f deployment.yaml --validate=false
+                    if %ERRORLEVEL% NEQ 0 exit /b 1
+
+                    kubectl apply -f service.yaml --validate=false
+                    if %ERRORLEVEL% NEQ 0 exit /b 1
+
+                    echo === Updating Image ===
+                    kubectl set image deployment/%KUBE_DEPLOYMENT_NAME% login-ci-demo-container=%DOCKER_HUB_REPO%:%IMAGE_TAG%
+                    if %ERRORLEVEL% NEQ 0 exit /b 1
+                    """
+                }
             }
         }
 
@@ -144,16 +176,14 @@ pipeline {
             echo "Pipeline finished with status: ${currentBuild.currentResult}"
             cleanWs()
             bat "docker system prune -f >nul 2>&1"
-            bat "kubectl get pods -n %NAMESPACE%"
-            bat "kubectl get svc -n %NAMESPACE%"
         }
         success {
             bat """
             @echo off
             set "KUBECONFIG=%KUBECONFIG%"
-            kubectl get deployments -n %NAMESPACE%
-            kubectl get pods -o wide -n %NAMESPACE%
-            kubectl get services -n %NAMESPACE%
+            kubectl get deployments
+            kubectl get pods -o wide
+            kubectl get services
             """
         }
         failure {
@@ -161,9 +191,9 @@ pipeline {
             @echo off
             set "KUBECONFIG=%KUBECONFIG%"
             echo === FINAL DEBUG INFO ===
-            kubectl get deployment %KUBE_DEPLOYMENT_NAME% -n %NAMESPACE% -o yaml || echo no deployment
-            kubectl describe pods -l %K8S_LABEL% -n %NAMESPACE%
-            kubectl logs -l %K8S_LABEL% -n %NAMESPACE% --tail=200
+            kubectl get deployment %KUBE_DEPLOYMENT_NAME% -o yaml || echo no deployment
+            kubectl describe pods -l %K8S_LABEL%
+            kubectl logs -l %K8S_LABEL% --tail=200
             """
         }
     }
