@@ -113,8 +113,6 @@ pipeline {
         }
     }
 
-        }
-
         stage('Debug Pod Issues') {
             steps {
                 bat """
