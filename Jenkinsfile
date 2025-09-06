@@ -50,7 +50,6 @@ pipeline {
                 bat """
                 @echo off
                 set TRIVY_TIMEOUT=10m
-                set TRIVY_CACHE_CLEAR=true
                 echo Starting Trivy security scan with extended timeout...
                 trivy image --timeout %TRIVY_TIMEOUT% --severity CRITICAL,HIGH --exit-code 1 --ignore-unfixed %IMAGE_NAME%:%IMAGE_TAG%
                 if %ERRORLEVEL% NEQ 0 exit /b 1
@@ -90,28 +89,28 @@ pipeline {
             }
         }
 
-            stage('Deploy and Update on Kubernetes') {
-        steps {
-            withCredentials([file(credentialsId: 'kubeconfig-file', variable: 'KCFG')]) {
-                bat """
-                @echo off
-                set "KUBECONFIG=%KCFG%"
-                kubectl config use-context docker-desktop
-                kubectl config current-context
-                kubectl cluster-info
+        stage('Deploy and Update on Kubernetes') {
+            steps {
+                withCredentials([file(credentialsId: 'kubeconfig-file', variable: 'KCFG')]) {
+                    bat """
+                    @echo off
+                    set "KUBECONFIG=%KCFG%"
+                    kubectl config use-context docker-desktop
+                    kubectl config current-context
+                    kubectl cluster-info
 
-                kubectl apply -f deployment.yaml --validate=false
-                if %ERRORLEVEL% NEQ 0 exit /b 1
+                    kubectl apply -f deployment.yaml --validate=false
+                    if %ERRORLEVEL% NEQ 0 exit /b 1
 
-                kubectl apply -f service.yaml --validate=false
-                if %ERRORLEVEL% NEQ 0 exit /b 1
+                    kubectl apply -f service.yaml --validate=false
+                    if %ERRORLEVEL% NEQ 0 exit /b 1
 
-                kubectl set image deployment/%KUBE_DEPLOYMENT_NAME% login-ci-demo-container=%DOCKER_HUB_REPO%:%IMAGE_TAG%
-                if %ERRORLEVEL% NEQ 0 exit /b 1
-                """
+                    kubectl set image deployment/%KUBE_DEPLOYMENT_NAME% login-ci-demo-container=%DOCKER_HUB_REPO%:%IMAGE_TAG%
+                    if %ERRORLEVEL% NEQ 0 exit /b 1
+                    """
+                }
             }
         }
-    }
 
         stage('Debug Pod Issues') {
             steps {
@@ -169,6 +168,7 @@ pipeline {
     post {
         always {
             echo "Pipeline finished with status: ${currentBuild.currentResult}"
+            cleanWs()
             bat "docker system prune -f >nul 2>&1"
         }
         success {
