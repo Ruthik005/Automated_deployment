@@ -1,0 +1,16 @@
+# service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: login-ci-demo-service
+  labels:
+    app: login-ci-demo
+spec:
+  type: NodePort
+  selector:
+    app: login-ci-demo
+  ports:
+    - protocol: TCP
+      port: 8081
+      targetPort: 8081
+      nodePort: 30081

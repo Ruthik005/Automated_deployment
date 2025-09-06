@@ -1,3 +1,4 @@
+# deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -14,7 +15,6 @@ spec:
       labels:
         app: login-ci-demo
     spec:
-      # ** SECUIRTY FIX ENABLED **: Hardens the security for the entire Pod
       securityContext:
         runAsNonRoot: true
       containers:
@@ -22,10 +22,9 @@ spec:
         image: ruthik005/capstone_project:latest
         ports:
         - containerPort: 8081
-        # ** SECUIRTY FIX ENABLED **: Mounts the writable temporary directory
         volumeMounts:
         - name: tmp-volume
-          mountPath: /tmp # Corrected path for Spring Boot
+          mountPath: /tmp
         env:
         - name: SERVER_PORT
           value: "8081"
@@ -40,7 +39,6 @@ spec:
           limits:
             memory: "512Mi"
             cpu: "500m"
-        # Using your detailed health probes
         livenessProbe:
           httpGet:
             path: /actuator/health
@@ -57,55 +55,11 @@ spec:
           periodSeconds: 10
           timeoutSeconds: 10
           failureThreshold: 5
-        # ** SECUIRTY FIX ENABLED **: Hardens the security for the individual container
         securityContext:
           runAsUser: 1001
           runAsGroup: 1001
           readOnlyRootFilesystem: true
           allowPrivilegeEscalation: false
-      # ** SECUIRTY FIX ENABLED **: Defines the writable temporary volume at the pod level
       volumes:
       - name: tmp-volume
         emptyDir: {}
-
----
-
-# --- NO CHANGES TO YOUR SERVICE OR INGRESS ---
-
-apiVersion: v1
-kind: Service
-metadata:
-  name: login-ci-demo-service
-  labels:
-    app: login-ci-demo
-spec:
-  type: NodePort
-  selector:
-    app: login-ci-demo
-  ports:
-    - protocol: TCP
-      port: 8081
-      targetPort: 8081
-      nodePort: 30081
-
----
-
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: login-ci-demo-ingress
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
-spec:
-  rules:
-  - host: login-demo.local
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: login-ci-demo-service
-            port:
-              number: 8081
-

@@ -10,11 +10,14 @@ pipeline {
         KUBE_SERVICE_NAME    = "login-ci-demo-service"
         K8S_LABEL            = "app=login-ci-demo"
         KUBECONFIG           = "${env.USERPROFILE}\\.kube\\jenkins-kubeconfig.yaml"
+        TRIVY_TIMEOUT        = "10m"
     }
 
     stages {
         stage('Checkout SCM') {
-            steps { checkout scm }
+            steps {
+                checkout scm
+            }
         }
 
         stage('Clean Old Docker Images & Containers') {
@@ -38,9 +41,15 @@ pipeline {
             steps {
                 bat """
                 @echo off
-                echo Building Docker image: %IMAGE_NAME%:%IMAGE_TAG%
+                echo === Building Docker Image ===
                 docker build --no-cache -t %IMAGE_NAME%:%IMAGE_TAG% .
                 if %ERRORLEVEL% NEQ 0 exit /b 1
+
+                echo === Running Container Test ===
+                docker run --rm -d --name test-build -p 8085:%APP_PORT% %IMAGE_NAME%:%IMAGE_TAG%
+                ping -n 15 127.0.0.1 >nul
+                curl http://localhost:8085/actuator/health || echo Health check failed
+                docker stop test-build
                 """
             }
         }
@@ -49,8 +58,7 @@ pipeline {
             steps {
                 bat """
                 @echo off
-                set TRIVY_TIMEOUT=10m
-                echo Starting Trivy security scan with extended timeout...
+                echo === Running Trivy Scan ===
                 trivy image --timeout %TRIVY_TIMEOUT% --severity CRITICAL,HIGH --exit-code 1 --ignore-unfixed %IMAGE_NAME%:%IMAGE_TAG%
                 if %ERRORLEVEL% NEQ 0 exit /b 1
                 """
@@ -83,6 +91,7 @@ pipeline {
             steps {
                 bat """
                 @echo off
+                echo === Scanning Kubernetes YAML with Trivy ===
                 trivy config --severity HIGH,CRITICAL --exit-code 1 .
                 if %ERRORLEVEL% NEQ 0 exit /b 1
                 """
@@ -99,12 +108,14 @@ pipeline {
                     kubectl config current-context
                     kubectl cluster-info
 
+                    echo === Applying Deployment and Service ===
                     kubectl apply -f deployment.yaml --validate=false
                     if %ERRORLEVEL% NEQ 0 exit /b 1
 
                     kubectl apply -f service.yaml --validate=false
                     if %ERRORLEVEL% NEQ 0 exit /b 1
 
+                    echo === Updating Image ===
                     kubectl set image deployment/%KUBE_DEPLOYMENT_NAME% login-ci-demo-container=%DOCKER_HUB_REPO%:%IMAGE_TAG%
                     if %ERRORLEVEL% NEQ 0 exit /b 1
                     """
@@ -118,28 +129,22 @@ pipeline {
                 @echo off
                 set "KUBECONFIG=%KUBECONFIG%"
 
-                echo === Current Deployment Status ===
+                echo === Deployment Status ===
                 kubectl get deployment %KUBE_DEPLOYMENT_NAME% -o wide || echo Deployment not found
 
-                echo === Pod Status and Details ===
+                echo === Pod Status ===
                 kubectl get pods -l %K8S_LABEL% -o wide
 
-                echo === Container Logs (last 50 lines per pod) ===
+                echo === Pod Logs ===
                 for /f %%p in ('kubectl get pods -l %K8S_LABEL% -o name 2^>nul') do (
                     echo --- Logs for %%p ---
                     kubectl logs %%p --tail=50
                     echo.
                 )
 
-                echo === Service Status ===
+                echo === Service Info ===
                 kubectl get svc %KUBE_SERVICE_NAME% -o wide
                 kubectl describe svc %KUBE_SERVICE_NAME%
-
-                echo === Local Test Run of Image ===
-                docker run --rm -d --name test-container -p 8082:8081 %DOCKER_HUB_REPO%:%IMAGE_TAG%
-                ping -n 20 127.0.0.1 >nul
-                curl http://localhost:8082/actuator/health || echo Health endpoint failed
-                docker stop test-container
                 """
             }
         }
@@ -151,6 +156,7 @@ pipeline {
                 set "KUBECONFIG=%KUBECONFIG%"
                 ping -n 10 127.0.0.1 >nul
 
+                echo === Verifying Rollout ===
                 kubectl rollout status deployment/%KUBE_DEPLOYMENT_NAME% --timeout=5m
                 if %ERRORLEVEL% NEQ 0 (
                     echo DEPLOYMENT VERIFICATION FAILED
