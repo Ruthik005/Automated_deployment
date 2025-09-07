@@ -106,29 +106,18 @@ pipeline {
         }
 
         stage('Deploy and Update on Kubernetes') {
-            steps {
-                withCredentials([file(credentialsId: 'kubeconfig-file', variable: 'KCFG')]) {
+        steps {
+            withCredentials([string(credentialsId: 'kubeconfig-jenkins', variable: 'KUBECONFIG_CONTENT')]) {
+                writeFile file: 'kubeconfig.yaml', text: "${KUBECONFIG_CONTENT}"
+                withEnv(["KUBECONFIG=${WORKSPACE}/kubeconfig.yaml"]) {
                     bat """
-                    @echo off
-                    set "KUBECONFIG=%KCFG%"
-                    kubectl config use-context docker-desktop
-                    kubectl config current-context
-                    kubectl cluster-info
-
-                    echo === Applying Deployment and Service ===
-                    kubectl apply -f deployment.yaml --validate=false
-                    if %ERRORLEVEL% NEQ 0 exit /b 1
-
-                    kubectl apply -f service.yaml --validate=false
-                    if %ERRORLEVEL% NEQ 0 exit /b 1
-
-                    echo === Updating Image ===
-                    kubectl set image deployment/%KUBE_DEPLOYMENT_NAME% login-ci-demo-container=%DOCKER_HUB_REPO%:%IMAGE_TAG%
-                    if %ERRORLEVEL% NEQ 0 exit /b 1
+                        kubectl apply -f k8s/deployment.yaml
+                        kubectl apply -f k8s/service.yaml
                     """
                 }
             }
         }
+    }
 
         stage('Debug Pod Issues') {
             steps {

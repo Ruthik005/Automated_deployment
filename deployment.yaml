@@ -1,4 +1,3 @@
-# deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -20,6 +19,7 @@ spec:
       containers:
       - name: login-ci-demo-container
         image: ruthik005/capstone_project:latest
+        imagePullPolicy: Always   # <--- important update
         ports:
         - containerPort: 8081
         volumeMounts:
