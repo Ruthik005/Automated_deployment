@@ -104,20 +104,22 @@ pipeline {
                 """
             }
         }
-
         stage('Deploy and Update on Kubernetes') {
-        steps {
-            withCredentials([string(credentialsId: 'kubeconfig-jenkins', variable: 'KUBECONFIG_CONTENT')]) {
-                writeFile file: 'kubeconfig.yaml', text: "${KUBECONFIG_CONTENT}"
-                withEnv(["KUBECONFIG=${WORKSPACE}/kubeconfig.yaml"]) {
+            steps {
+                withCredentials([file(credentialsId: 'kubeconfig-file', variable: 'KCFG')]) {
                     bat """
-                        kubectl apply -f deployment.yaml
-                        kubectl apply -f service.yaml
+                    @echo off
+                    set "KUBECONFIG=%KCFG%"
+
+                    kubectl apply -f deployment.yaml
+                    kubectl apply -f service.yaml
+
+                    kubectl set image deployment/login-ci-demo-deployment login-ci-demo-container=ruthik005/capstone_project:${BUILD_NUMBER}
                     """
                 }
             }
         }
-    }
+
 
         stage('Debug Pod Issues') {
             steps {
