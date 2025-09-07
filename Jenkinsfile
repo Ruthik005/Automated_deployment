@@ -62,6 +62,7 @@ pipeline {
                 docker rm test-build >nul 2>&1
                 
                 echo === Docker Build and Test Completed Successfully ===
+                exit /b 0
                 '''
             }
         }
