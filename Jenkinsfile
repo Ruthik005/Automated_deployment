@@ -47,15 +47,17 @@ pipeline {
             if %ERRORLEVEL% NEQ 0 exit /b 1
 
             echo === Running Container Test ===
-            docker run --rm -d --name test-build -p 8081:8080 %IMAGE_NAME%:%IMAGE_TAG%
+            docker run --rm -d --name test-build -p 8085:8080 %IMAGE_NAME%:%IMAGE_TAG%
 
             echo === Waiting for App Startup ===
             ping -n 30 127.0.0.1 >nul
 
             echo === Health Check ===
-            curl http://localhost:8081/actuator/health || (echo Health check failed & exit /b 1)
+            curl http://localhost:8085/actuator/health || (echo Health check failed & exit /b 1)
 
-            docker stop test-build
+            docker stop test-build || true
+            docker rm test-build || true
+
             '''
         }
     }
