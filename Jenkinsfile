@@ -111,8 +111,8 @@ pipeline {
                 writeFile file: 'kubeconfig.yaml', text: "${KUBECONFIG_CONTENT}"
                 withEnv(["KUBECONFIG=${WORKSPACE}/kubeconfig.yaml"]) {
                     bat """
-                        kubectl apply -f k8s/deployment.yaml
-                        kubectl apply -f k8s/service.yaml
+                        kubectl apply -f deployment.yaml
+                        kubectl apply -f service.yaml
                     """
                 }
             }
