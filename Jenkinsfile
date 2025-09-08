@@ -9,6 +9,7 @@ pipeline {
         KUBE_DEPLOYMENT_NAME = "login-ci-demo-deployment"
         KUBE_SERVICE_NAME    = "login-ci-demo-service"
         K8S_LABEL            = "app=login-ci-demo"
+        KUBECONFIG           = "${env.USERPROFILE}\\.kube\\config"  // Use default config
         TRIVY_TIMEOUT        = "10m"
     }
 
@@ -55,17 +56,16 @@ pipeline {
 
                 echo === Verifying Container is Running ===
                 docker ps | findstr test-build
-
+                
                 echo === Cleanup Test Container ===
                 docker stop test-build >nul 2>&1
                 docker rm test-build >nul 2>&1
-
+                
                 echo === Docker Build and Test Completed Successfully ===
                 exit /b 0
                 '''
             }
         }
-
         stage('Security Scan with Trivy') {
             steps {
                 bat """
@@ -112,95 +112,99 @@ pipeline {
 
         stage('Verify Kubernetes Connection') {
             steps {
-                withKubeConfig([credentialsId: 'kubeconfig-cred']) {
-                    bat """
-                    @echo off
-                    echo === Testing Kubernetes Connection ===
-                    kubectl cluster-info
-                    if %ERRORLEVEL% NEQ 0 (
-                        echo Kubernetes connection failed - skipping K8s stages
-                        exit /b 0
-                    )
-                    kubectl get nodes
-                    """
-                }
+                bat """
+                @echo off
+                echo === Testing Kubernetes Connection ===
+                kubectl cluster-info
+                if %ERRORLEVEL% NEQ 0 (
+                    echo Kubernetes connection failed - skipping K8s stages
+                    exit /b 0
+                )
+                kubectl get nodes
+                """
             }
         }
 
         stage('Deploy and Update on Kubernetes') {
             when {
                 expression {
-                    return (bat(script: 'kubectl cluster-info', returnStatus: true) == 0)
+                    try {
+                        bat(script: 'kubectl cluster-info', returnStatus: true) == 0
+                    } catch (Exception e) {
+                        return false
+                    }
                 }
             }
             steps {
-                withKubeConfig([credentialsId: 'kubeconfig-cred']) {
-                    bat """
-                    @echo off
-                    echo === Deploying to Kubernetes ===
-                    kubectl apply -f deployment.yaml
-                    kubectl apply -f service.yaml
-                    kubectl set image deployment/%KUBE_DEPLOYMENT_NAME% login-ci-demo-container=%DOCKER_HUB_REPO%:%IMAGE_TAG%
-                    """
-                }
+                bat """
+                @echo off
+                echo === Deploying to Kubernetes ===
+                kubectl apply -f deployment.yaml
+                kubectl apply -f service.yaml
+                kubectl set image deployment/login-ci-demo-deployment login-ci-demo-container=ruthik005/capstone_project:${BUILD_NUMBER}
+                """
             }
         }
 
         stage('Debug Pod Issues') {
             when {
                 expression {
-                    return (bat(script: 'kubectl cluster-info', returnStatus: true) == 0)
+                    try {
+                        bat(script: 'kubectl cluster-info', returnStatus: true) == 0
+                    } catch (Exception e) {
+                        return false
+                    }
                 }
             }
             steps {
-                withKubeConfig([credentialsId: 'kubeconfig-cred']) {
-                    bat """
-                    @echo off
-                    echo === Deployment Status ===
-                    kubectl get deployment %KUBE_DEPLOYMENT_NAME% -o wide || echo Deployment not found
+                bat """
+                @echo off
+                echo === Deployment Status ===
+                kubectl get deployment %KUBE_DEPLOYMENT_NAME% -o wide || echo Deployment not found
 
-                    echo === Pod Status ===
-                    kubectl get pods -l %K8S_LABEL% -o wide
+                echo === Pod Status ===
+                kubectl get pods -l %K8S_LABEL% -o wide
 
-                    echo === Pod Logs ===
-                    for /f %%p in ('kubectl get pods -l %K8S_LABEL% -o name 2^>nul') do (
-                        echo --- Logs for %%p ---
-                        kubectl logs %%p --tail=50
-                        echo.
-                    )
+                echo === Pod Logs ===
+                for /f %%p in ('kubectl get pods -l %K8S_LABEL% -o name 2^>nul') do (
+                    echo --- Logs for %%p ---
+                    kubectl logs %%p --tail=50
+                    echo.
+                )
 
-                    echo === Service Info ===
-                    kubectl get svc %KUBE_SERVICE_NAME% -o wide || echo Service not found
-                    kubectl describe svc %KUBE_SERVICE_NAME% || echo Service not found
-                    """
-                }
+                echo === Service Info ===
+                kubectl get svc %KUBE_SERVICE_NAME% -o wide || echo Service not found
+                kubectl describe svc %KUBE_SERVICE_NAME% || echo Service not found
+                """
             }
         }
 
         stage('Verify Kubernetes Deployment') {
             when {
                 expression {
-                    return (bat(script: 'kubectl cluster-info', returnStatus: true) == 0)
+                    try {
+                        bat(script: 'kubectl cluster-info', returnStatus: true) == 0
+                    } catch (Exception e) {
+                        return false
+                    }
                 }
             }
             steps {
-                withKubeConfig([credentialsId: 'kubeconfig-cred']) {
-                    bat """
-                    @echo off
-                    ping -n 10 127.0.0.1 >nul
+                bat """
+                @echo off
+                ping -n 10 127.0.0.1 >nul
 
-                    echo === Verifying Rollout ===
-                    kubectl rollout status deployment/%KUBE_DEPLOYMENT_NAME% --timeout=5m
-                    if %ERRORLEVEL% NEQ 0 (
-                        echo DEPLOYMENT VERIFICATION FAILED
-                        kubectl get pods -l %K8S_LABEL% -o wide
-                        exit /b 1
-                    )
-
+                echo === Verifying Rollout ===
+                kubectl rollout status deployment/%KUBE_DEPLOYMENT_NAME% --timeout=5m
+                if %ERRORLEVEL% NEQ 0 (
+                    echo DEPLOYMENT VERIFICATION FAILED
                     kubectl get pods -l %K8S_LABEL% -o wide
-                    kubectl get svc %KUBE_SERVICE_NAME% -o wide
-                    """
-                }
+                    exit /b 1
+                )
+
+                kubectl get pods -l %K8S_LABEL% -o wide
+                kubectl get svc %KUBE_SERVICE_NAME% -o wide
+                """
             }
         }
     }
@@ -211,37 +215,30 @@ pipeline {
             cleanWs()
             bat "docker system prune -f >nul 2>&1"
         }
-
         success {
             script {
                 try {
-                    withKubeConfig([credentialsId: 'kubeconfig-cred']) {
-                        bat """
-                        @echo off
-                        echo === SUCCESS SUMMARY ===
-                        kubectl get deployments
-                        kubectl get pods -o wide
-                        kubectl get services
-                        """
-                    }
+                    bat """
+                    @echo off
+                    kubectl get deployments
+                    kubectl get pods -o wide
+                    kubectl get services
+                    """
                 } catch (Exception e) {
                     echo "Kubernetes not accessible for success summary"
                 }
             }
         }
-
         failure {
             script {
                 try {
-                    withKubeConfig([credentialsId: 'kubeconfig-cred']) {
-                        bat """
-                        @echo off
-                        echo === FINAL DEBUG INFO ===
-                        kubectl get deployment %KUBE_DEPLOYMENT_NAME% -o yaml || echo no deployment
-                        kubectl describe pods -l %K8S_LABEL%
-                        kubectl logs -l %K8S_LABEL% --tail=200
-                        """
-                    }
+                    bat """
+                    @echo off
+                    echo === FINAL DEBUG INFO ===
+                    kubectl get deployment %KUBE_DEPLOYMENT_NAME% -o yaml || echo no deployment
+                    kubectl describe pods -l %K8S_LABEL%
+                    kubectl logs -l %K8S_LABEL% --tail=200
+                    """
                 } catch (Exception e) {
                     echo "Kubernetes not accessible for failure debugging"
                 }
