@@ -55,11 +55,11 @@ pipeline {
 
                 echo === Verifying Container is Running ===
                 docker ps | findstr test-build
-                                
+
                 echo === Cleanup Test Container ===
                 docker stop test-build >nul 2>&1
                 docker rm test-build >nul 2>&1
-                                
+
                 echo === Docker Build and Test Completed Successfully ===
                 exit /b 0
                 '''
@@ -211,12 +211,14 @@ pipeline {
             cleanWs()
             bat "docker system prune -f >nul 2>&1"
         }
+
         success {
             script {
                 try {
                     withKubeConfig([credentialsId: 'kubeconfig-cred']) {
                         bat """
                         @echo off
+                        echo === SUCCESS SUMMARY ===
                         kubectl get deployments
                         kubectl get pods -o wide
                         kubectl get services
@@ -227,6 +229,7 @@ pipeline {
                 }
             }
         }
+
         failure {
             script {
                 try {
