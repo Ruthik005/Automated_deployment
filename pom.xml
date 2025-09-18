@@ -12,7 +12,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.4.5</version> <!-- ✅ Boot manages all Spring versions -->
+        <version>3.4.5</version>
         <relativePath/>
     </parent>
 
@@ -23,14 +23,28 @@
         <junit.jupiter.version>5.10.0</junit.jupiter.version>
     </properties>
 
-    <!-- ✅ Dependency management overrides (only where required) -->
+    <!-- ✅ Dependency management overrides (security fixes) -->
     <dependencyManagement>
         <dependencies>
-            <!-- Override Tomcat core for security fixes -->
+            <!-- Fix Tomcat CVEs -->
             <dependency>
                 <groupId>org.apache.tomcat.embed</groupId>
                 <artifactId>tomcat-embed-core</artifactId>
                 <version>10.1.44</version>
+            </dependency>
+
+            <!-- Fix Spring Security CVE-2025-41248 -->
+            <dependency>
+                <groupId>org.springframework.security</groupId>
+                <artifactId>spring-security-core</artifactId>
+                <version>6.4.10</version>
+            </dependency>
+
+            <!-- Fix Spring Core CVE-2025-41249 -->
+            <dependency>
+                <groupId>org.springframework</groupId>
+                <artifactId>spring-core</artifactId>
+                <version>6.2.11</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -66,12 +80,6 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
-
-        <!--
-        // ===================================================================
-        // REMOVED: mysql-connector-j since not needed for this project.
-        // ===================================================================
-        -->
     </dependencies>
 
     <build>
