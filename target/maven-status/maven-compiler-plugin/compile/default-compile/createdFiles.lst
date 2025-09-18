@@ -1,4 +1,8 @@
 com\example\Application.class
 com\example\login\LoginService.class
+com\example\dashboard\JenkinsBuildInfo.class
+com\example\dashboard\JenkinsController.class
+com\example\dashboard\JenkinsClient.class
+com\example\login\LoginController.class
 com\example\login\HomeController.class
 com\example\login\SecurityConfig.class
